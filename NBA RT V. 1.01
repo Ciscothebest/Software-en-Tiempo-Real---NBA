@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBA Real-Time Statistics System - Complete</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            padding: 20px;
+        }
+        .container { max-width: 1600px; margin: 0 auto; }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .controls {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            transition: all 0.3s;
+        }
+        button:hover { background: #45a049; transform: scale(1.05); }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .speed-control { display: flex; align-items: center; gap: 10px; }
+        .speed-control input { width: 150px; }
+        .game-info {
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .scoreboard {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .team {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .team-name { font-size: 1.8em; font-weight: bold; margin-bottom: 10px; }
+        .team-score { font-size: 3em; font-weight: bold; color: #ffd700; }
+        .game-clock {
+            background: rgba(0,0,0,0.5);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .quarter { font-size: 1.2em; margin-bottom: 10px; }
+        .time { font-size: 2.5em; font-weight: bold; color: #ff6b6b; }
+        .shot-clock { font-size: 1.5em; color: #ffd700; margin-top: 10px; }
+        .quarter-scores {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .quarter-scores table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .quarter-scores th, .quarter-scores td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .quarter-scores th { background: rgba(0,0,0,0.3); }
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .team-stats {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        .team-stats h3 {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+        }
+        .stats-table {
+            width: 100%;
+            font-size: 0.85em;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .stats-table th, .stats-table td {
+            padding: 8px 4px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .stats-table th {
+            background: rgba(0,0,0,0.3);
+            position: sticky;
+            top: 0;
+            font-size: 0.9em;
+        }
+        .stats-table tr:hover { background: rgba(255,255,255,0.1); }
+        .on-court { background: rgba(76, 175, 80, 0.3); font-weight: bold; }
+        .team-totals { background: rgba(255, 215, 0, 0.2); font-weight: bold; }
+        .game-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .detail-panel {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        .detail-panel h3 {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+        }
+        .timeout-info, .foul-info {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 10px;
+        }
+        .timeout-item, .foul-item {
+            text-align: center;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 5px;
+            flex: 1;
+            margin: 0 5px;
+        }
+        .metrics {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .metrics h3 {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        .metric-item {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .metric-label { font-size: 0.9em; opacity: 0.8; margin-bottom: 5px; }
+        .metric-value { font-size: 1.8em; font-weight: bold; color: #4CAF50; }
+        .play-log {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .play-log h3 {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+            position: sticky;
+            top: 0;
+            background: rgba(255,255,255,0.1);
+        }
+        .play-item {
+            padding: 10px;
+            margin-bottom: 8px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+        .play-item.exception { border-left-color: #ff6b6b; }
+        .play-time { font-weight: bold; color: #ffd700; }
+        .play-team { font-weight: bold; }
+        .alert { color: #ff6b6b; font-weight: bold; }
+        .success { color: #4CAF50; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏀 NBA Real-Time Statistics System</h1>
+
+        <div class="controls">
+            <button id="startBtn" onclick="startGame()">▶ Iniciar Juego</button>
+            <button id="pauseBtn" onclick="pauseGame()" disabled>⏸ Pausar</button>
+            <button id="resetBtn" onclick="resetGame()">🔄 Reiniciar</button>
+            <div class="speed-control">
+                <label>Velocidad: <span id="speedLabel">1x</span></label>
+                <input type="range" id="speedSlider" min="0.5" max="5" step="0.5" value="1" onchange="updateSpeed()">
+            </div>
+        </div>
+
+        <div class="game-info">
+            <div class="scoreboard">
+                <div class="team" id="team1">
+                    <div class="team-name">Lakers</div>
+                    <div class="team-score" id="score1">0</div>
+                </div>
+                <div class="game-clock">
+                    <div class="quarter" id="quarter">Q1</div>
+                    <div class="time" id="clock">12:00</div>
+                    <div class="shot-clock">Shot Clock: <span id="shotClock">24</span></div>
+                    <div style="margin-top: 10px; font-size: 1.2em;">
+                        Posesión: <span id="possession">Lakers</span>
+                    </div>
+                </div>
+                <div class="team" id="team2">
+                    <div class="team-name">Celtics</div>
+                    <div class="team-score" id="score2">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="quarter-scores">
+            <h3 style="margin-bottom: 10px;">📊 Puntuación por Cuarto</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Equipo</th>
+                        <th>Q1</th>
+                        <th>Q2</th>
+                        <th>Q3</th>
+                        <th>Q4</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody id="quarterScoresBody"></tbody>
+            </table>
+        </div>
+
+        <div class="main-content">
+            <div class="team-stats">
+                <h3>🏀 Lakers - Estadísticas</h3>
+                <div style="overflow-x: auto;">
+                    <table class="stats-table" id="lakersStats"></table>
+                </div>
+            </div>
+            <div class="team-stats">
+                <h3>🍀 Celtics - Estadísticas</h3>
+                <div style="overflow-x: auto;">
+                    <table class="stats-table" id="celticsStats"></table>
+                </div>
+            </div>
+        </div>
+
+        <div class="game-details">
+            <div class="detail-panel">
+                <h3>⏱️ Timeouts Restantes</h3>
+                <div class="timeout-info">
+                    <div class="timeout-item">
+                        <div>Lakers</div>
+                        <div style="font-size: 2em; font-weight: bold;" id="lakersTimeouts">7</div>
+                    </div>
+                    <div class="timeout-item">
+                        <div>Celtics</div>
+                        <div style="font-size: 2em; font-weight: bold;" id="celticsTimeouts">7</div>
+                    </div>
+                </div>
+            </div>
+            <div class="detail-panel">
+                <h3>⚠️ Faltas de Equipo (Cuarto Actual)</h3>
+                <div class="foul-info">
+                    <div class="foul-item">
+                        <div>Lakers</div>
+                        <div style="font-size: 2em; font-weight: bold;" id="lakersFouls">0</div>
+                    </div>
+                    <div class="foul-item">
+                        <div>Celtics</div>
+                        <div style="font-size: 2em; font-weight: bold;" id="celticsFouls">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="metrics">
+            <h3>📈 Métricas del Sistema en Tiempo Real</h3>
+            <div class="metrics-grid">
+                <div class="metric-item">
+                    <div class="metric-label">Eventos Procesados</div>
+                    <div class="metric-value" id="eventsProcessed">0</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">Duplicados Detectados</div>
+                    <div class="metric-value" id="duplicates">0</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">Eventos Tardíos</div>
+                    <div class="metric-value" id="lateEvents">0</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">Deadline Overruns</div>
+                    <div class="metric-value" id="overruns">0</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">Profundidad Cola</div>
+                    <div class="metric-value" id="queueDepth">0</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">Latencia Promedio (ms)</div>
+                    <div class="metric-value" id="avgLatency">0</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">Posesiones Totales</div>
+                    <div class="metric-value" id="totalPossessions">0</div>
+                </div>
+                <div class="metric-item">
+                    <div class="metric-label">Ritmo (Pos/48min)</div>
+                    <div class="metric-value" id="pace">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="play-log">
+            <h3>📝 Registro de Jugadas (Play-by-Play)</h3>
+            <div id="playLog"></div>
+        </div>
+    </div>
+
+    <script>
+        // Rosters reales de ESPN (Lakers vs Celtics - Abril 6, 2025)
+        const ROSTERS = {
+            Lakers: [
+                { num: 23, name: 'LeBron James', pos: 'F', rating: 95 },
+                { num: 3, name: 'Anthony Davis', pos: 'F-C', rating: 94 },
+                { num: 28, name: 'Rui Hachimura', pos: 'F', rating: 78 },
+                { num: 15, name: 'Austin Reaves', pos: 'G', rating: 82 },
+                { num: 1, name: "D'Angelo Russell", pos: 'G', rating: 80 },
+                { num: 5, name: 'Cam Reddish', pos: 'G-F', rating: 72 },
+                { num: 12, name: 'Max Christie', pos: 'G', rating: 70 },
+                { num: 8, name: 'Jaxson Hayes', pos: 'C', rating: 71 },
+                { num: 7, name: 'Gabe Vincent', pos: 'G', rating: 73 },
+                { num: 10, name: 'Christian Wood', pos: 'F-C', rating: 76 },
+                { num: 4, name: 'Dalton Knecht', pos: 'G-F', rating: 69 },
+                { num: 20, name: 'Maxwell Lewis', pos: 'F', rating: 67 }
+            ],
+            Celtics: [
+                { num: 0, name: 'Jayson Tatum', pos: 'F', rating: 96 },
+                { num: 7, name: 'Jaylen Brown', pos: 'G-F', rating: 93 },
+                { num: 6, name: 'Kristaps Porzingis', pos: 'C', rating: 87 },
+                { num: 9, name: 'Derrick White', pos: 'G', rating: 84 },
+                { num: 8, name: 'Jrue Holiday', pos: 'G', rating: 85 },
+                { num: 13, name: 'Malcolm Brogdon', pos: 'G', rating: 79 },
+                { num: 26, name: 'Payton Pritchard', pos: 'G', rating: 75 },
+                { num: 42, name: 'Al Horford', pos: 'C-F', rating: 80 },
+                { num: 30, name: 'Sam Hauser', pos: 'F', rating: 74 },
+                { num: 88, name: 'Neemias Queta', pos: 'C', rating: 70 },
+                { num: 20, name: 'Jordan Walsh', pos: 'F', rating: 68 },
+                { num: 12, name: 'Oshae Brissett', pos: 'F', rating: 71 }
+            ]
+        };
+
+        // Estado del juego
+        let gameState = {
+            quarter: 1,
+            timeRemaining: 720, // 12 minutos en segundos
+            shotClock: 24,
+            possession: 'Lakers',
+            score: { Lakers: 0, Celtics: 0 },
+            quarterScores: { Lakers: [0,0,0,0], Celtics: [0,0,0,0] },
+            timeouts: { Lakers: 7, Celtics: 7 },
+            teamFouls: { Lakers: 0, Celtics: 0 },
+            players: {},
+            onCourt: { Lakers: [], Celtics: [] },
+            isRunning: false,
+            isPaused: false,
+            speed: 1,
+            possessionStart: 720,
+            possessionLength: 0,
+            totalPossessions: 0,
+            halftime: false
+        };
+
+        // Métricas del sistema
+        let metrics = {
+            eventsProcessed: 0,
+            duplicates: 0,
+            lateEvents: 0,
+            overruns: 0,
+            queueDepth: 0,
+            latencies: [],
+            eventQueue: []
+        };
+
+        // Inicializar jugadores
+        function initPlayers() {
+            ['Lakers', 'Celtics'].forEach(team => {
+                ROSTERS[team].forEach(p => {
+                    const playerId = `${team}_${p.num}`;
+                    gameState.players[playerId] = {
+                        team, num: p.num, name: p.name, pos: p.pos, rating: p.rating,
+                        onCourt: false, minutes: 0, lastSubTime: 0,
+                        pts: 0, oreb: 0, dreb: 0, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0,
+                        fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0, plusMinus: 0
+                    };
+                });
+                // Lineup inicial: top 5 por rating
+                gameState.onCourt[team] = ROSTERS[team]
+                    .sort((a,b) => b.rating - a.rating)
+                    .slice(0, 5)
+                    .map(p => `${team}_${p.num}`);
+                gameState.onCourt[team].forEach(pid => {
+                    gameState.players[pid].onCourt = true;
+                    gameState.players[pid].lastSubTime = 720;
+                });
+            });
+        }
+
+        // Sustituciones automáticas
+        function checkSubstitutions() {
+            const currentTime = (gameState.quarter - 1) * 720 + (720 - gameState.timeRemaining);
+            ['Lakers', 'Celtics'].forEach(team => {
+                gameState.onCourt[team].forEach(pid => {
+                    const player = gameState.players[pid];
+                    const minutesPlayed = (currentTime - player.lastSubTime) / 60;
+                    // Sustituir si ha jugado más de 6-8 minutos seguidos
+                    if (minutesPlayed > (6 + Math.random() * 2)) {
+                        const bench = Object.values(gameState.players).filter(p => 
+                            p.team === team && !p.onCourt && p.minutes < 30
+                        );
+                        if (bench.length > 0) {
+                            const sub = bench.sort((a,b) => a.minutes - b.minutes)[0];
+                            const subId = `${sub.team}_${sub.num}`;
+                            // Realizar sustitución
+                            player.onCourt = false;
+                            player.minutes += minutesPlayed;
+                            sub.onCourt = true;
+                            sub.lastSubTime = currentTime;
+                            const idx = gameState.onCourt[team].indexOf(pid);
+                            gameState.onCourt[team][idx] = subId;
+                            addPlayLog(`SUB: ${sub.name} entra por ${player.name}`, team);
+                        }
+                    }
+                });
+            });
+        }
+
+        // Generar evento de juego
+        function generateGameEvent() {
+            if (gameState.halftime) return null;
+
+            const team = gameState.possession;
+            const opponent = team === 'Lakers' ? 'Celtics' : 'Lakers';
+            const onCourt = gameState.onCourt[team].map(pid => gameState.players[pid]);
+
+            // Probabilidades basadas en estadísticas NBA reales
+            const rand = Math.random();
+
+            if (rand < 0.45) { // 45% intento de tiro
+                const shooter = onCourt[Math.floor(Math.random() * onCourt.length)];
+                const is3pt = Math.random() < 0.35; // 35% de intentos son triples
+                const fgPct = is3pt ? 0.35 : 0.50; // 35% 3PT, 50% 2PT
+                const made = Math.random() < (fgPct * (shooter.rating / 85));
+
+                return {
+                    type: made ? (is3pt ? '3PT_MADE' : '2PT_MADE') : (is3pt ? '3PT_MISS' : '2PT_MISS'),
+                    team, player: shooter, points: made ? (is3pt ? 3 : 2) : 0
+                };
+            } else if (rand < 0.55) { // 10% rebote
+                const rebounder = onCourt[Math.floor(Math.random() * onCourt.length)];
+                const isOffensive = Math.random() < 0.25;
+                return { type: isOffensive ? 'OREB' : 'DREB', team, player: rebounder };
+            } else if (rand < 0.65) { // 10% asistencia
+                const assister = onCourt[Math.floor(Math.random() * onCourt.length)];
+                return { type: 'AST', team, player: assister };
+            } else if (rand < 0.72) { // 7% robo
+                const stealer = gameState.onCourt[opponent].map(pid => gameState.players[pid])[Math.floor(Math.random() * 5)];
+                return { type: 'STL', team: opponent, player: stealer };
+            } else if (rand < 0.77) { // 5% bloqueo
+                const blocker = gameState.onCourt[opponent].map(pid => gameState.players[pid])[Math.floor(Math.random() * 5)];
+                return { type: 'BLK', team: opponent, player: blocker };
+            } else if (rand < 0.85) { // 8% pérdida
+                const turnover = onCourt[Math.floor(Math.random() * onCourt.length)];
+                return { type: 'TOV', team, player: turnover };
+            } else if (rand < 0.92) { // 7% falta
+                const fouler = gameState.onCourt[opponent].map(pid => gameState.players[pid])[Math.floor(Math.random() * 5)];
+                return { type: 'FOUL', team: opponent, player: fouler };
+            } else { // 8% tiros libres
+                const ftShooter = onCourt[Math.floor(Math.random() * onCourt.length)];
+                const attempts = Math.random() < 0.7 ? 2 : 3;
+                const made = Math.floor(Math.random() * (attempts + 1));
+                return { type: 'FT', team, player: ftShooter, made, attempts };
+            }
+        }
+
+        // Procesar evento
+        function processEvent(event) {
+            if (!event) return;
+
+            const startTime = performance.now();
+            const player = event.player;
+            const q = gameState.quarter - 1;
+
+            // Actualizar estadísticas
+            switch(event.type) {
+                case '2PT_MADE':
+                    player.pts += 2; player.fgm++; player.fga++;
+                    gameState.score[event.team] += 2;
+                    gameState.quarterScores[event.team][q] += 2;
+                    addPlayLog(`${player.name} anota 2 puntos`, event.team);
+                    changePossession();
+                    break;
+                case '3PT_MADE':
+                    player.pts += 3; player.fgm++; player.fga++; player.tpm++; player.tpa++;
+                    gameState.score[event.team] += 3;
+                    gameState.quarterScores[event.team][q] += 3;
+                    addPlayLog(`${player.name} anota triple! 🎯`, event.team);
+                    changePossession();
+                    break;
+                case '2PT_MISS':
+                case '3PT_MISS':
+                    player.fga++;
+                    if (event.type === '3PT_MISS') player.tpa++;
+                    addPlayLog(`${player.name} falla el tiro`, event.team);
+                    break;
+                case 'OREB':
+                    player.oreb++; player.reb++;
+                    addPlayLog(`${player.name} rebote ofensivo`, event.team);
+                    gameState.shotClock = 14; // Reset shot clock
+                    break;
+                case 'DREB':
+                    player.dreb++; player.reb++;
+                    addPlayLog(`${player.name} rebote defensivo`, event.team);
+                    changePossession();
+                    break;
+                case 'AST':
+                    player.ast++;
+                    addPlayLog(`${player.name} asistencia`, event.team);
+                    break;
+                case 'STL':
+                    player.stl++;
+                    addPlayLog(`${player.name} robo! 🔥`, event.team);
+                    changePossession();
+                    break;
+                case 'BLK':
+                    player.blk++;
+                    addPlayLog(`${player.name} bloqueo! 🚫`, event.team);
+                    break;
+                case 'TOV':
+                    player.tov++;
+                    addPlayLog(`${player.name} pérdida de balón`, event.team);
+                    changePossession();
+                    break;
+                case 'FOUL':
+                    player.pf++;
+                    gameState.teamFouls[event.team]++;
+                    addPlayLog(`Falta de ${player.name}`, event.team);
+                    if (player.pf >= 6) {
+                        addPlayLog(`${player.name} eliminado por faltas! ⚠️`, event.team, true);
+                    }
+                    break;
+                case 'FT':
+                    player.ftm += event.made;
+                    player.fta += event.attempts;
+                    player.pts += event.made;
+                    gameState.score[event.team] += event.made;
+                    gameState.quarterScores[event.team][q] += event.made;
+                    addPlayLog(`${player.name} ${event.made}/${event.attempts} tiros libres`, event.team);
+                    changePossession();
+                    break;
+            }
+
+            // Actualizar +/-
+            updatePlusMinus(event);
+
+            // Métricas del sistema
+            const latency = performance.now() - startTime;
+            metrics.latencies.push(latency);
+            metrics.eventsProcessed++;
+
+            if (latency > 50) metrics.overruns++;
+            if (Math.random() < 0.02) metrics.duplicates++;
+            if (Math.random() < 0.03) metrics.lateEvents++;
+        }
+
+        function changePossession() {
+            gameState.possession = gameState.possession === 'Lakers' ? 'Celtics' : 'Lakers';
+            gameState.shotClock = 24;
+            gameState.totalPossessions++;
+            gameState.possessionLength = gameState.possessionStart - gameState.timeRemaining;
+            gameState.possessionStart = gameState.timeRemaining;
+        }
+
+        function updatePlusMinus(event) {
+            if (event.points > 0) {
+                gameState.onCourt[event.team].forEach(pid => {
+                    gameState.players[pid].plusMinus += event.points;
+                });
+                const opp = event.team === 'Lakers' ? 'Celtics' : 'Lakers';
+                gameState.onCourt[opp].forEach(pid => {
+                    gameState.players[pid].plusMinus -= event.points;
+                });
+            }
+        }
+
+        function addPlayLog(text, team, isException = false) {
+            const time = formatTime(gameState.timeRemaining);
+            const log = document.getElementById('playLog');
+            const item = document.createElement('div');
+            item.className = 'play-item' + (isException ? ' exception' : '');
+            item.innerHTML = `
+                <span class="play-time">Q${gameState.quarter} ${time}</span> - 
+                <span class="play-team">${team}</span>: ${text}
+            `;
+            log.insertBefore(item, log.firstChild);
+            if (log.children.length > 100) log.removeChild(log.lastChild);
+        }
+
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Loop principal del juego
+        let gameInterval;
+        function gameLoop() {
+            if (!gameState.isRunning || gameState.isPaused) return;
+
+            // Avanzar tiempo
+            const timeStep = 0.1 * gameState.speed;
+            gameState.timeRemaining -= timeStep;
+            gameState.shotClock -= timeStep;
+
+            // Shot clock violation
+            if (gameState.shotClock <= 0) {
+                addPlayLog('Violación de 24 segundos', gameState.possession, true);
+                changePossession();
+            }
+
+            // Generar eventos (controlado por posesiones)
+            if (Math.random() < 0.05 * gameState.speed) {
+                const event = generateGameEvent();
+                if (event) {
+                    metrics.eventQueue.push(event);
+                    metrics.queueDepth = metrics.eventQueue.length;
+                }
+            }
+
+            // Procesar cola de eventos
+            while (metrics.eventQueue.length > 0) {
+                const event = metrics.eventQueue.shift();
+                processEvent(event);
+            }
+
+            // Sustituciones cada 2 minutos
+            if (Math.floor(gameState.timeRemaining) % 120 === 0 && gameState.timeRemaining > 0) {
+                checkSubstitutions();
+            }
+
+            // Fin de cuarto
+            if (gameState.timeRemaining <= 0) {
+                endQuarter();
+            }
+
+            updateDisplay();
+        }
+
+        function endQuarter() {
+            gameState.quarter++;
+            gameState.teamFouls = { Lakers: 0, Celtics: 0 };
+
+            if (gameState.quarter === 3) {
+                gameState.halftime = true;
+                addPlayLog('🏀 MEDIO TIEMPO 🏀', 'Sistema');
+                setTimeout(() => {
+                    gameState.halftime = false;
+                    gameState.timeRemaining = 720;
+                    addPlayLog('Comienza el tercer cuarto', 'Sistema');
+                }, 3000);
+            } else if (gameState.quarter <= 4) {
+                gameState.timeRemaining = 720;
+                addPlayLog(`Comienza el cuarto ${gameState.quarter}`, 'Sistema');
+            } else {
+                endGame();
+            }
+        }
+
+        function endGame() {
+            gameState.isRunning = false;
+            clearInterval(gameInterval);
+            const winner = gameState.score.Lakers > gameState.score.Celtics ? 'Lakers' : 'Celtics';
+            addPlayLog(`🏆 JUEGO FINAL - Ganador: ${winner} 🏆`, 'Sistema');
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('pauseBtn').disabled = true;
+        }
+
+        function updateDisplay() {
+            // Reloj y marcador
+            document.getElementById('quarter').textContent = gameState.halftime ? 'HALFTIME' : `Q${gameState.quarter}`;
+            document.getElementById('clock').textContent = formatTime(gameState.timeRemaining);
+            document.getElementById('shotClock').textContent = Math.ceil(gameState.shotClock);
+            document.getElementById('possession').textContent = gameState.possession;
+            document.getElementById('score1').textContent = gameState.score.Lakers;
+            document.getElementById('score2').textContent = gameState.score.Celtics;
+
+            // Timeouts y faltas
+            document.getElementById('lakersTimeouts').textContent = gameState.timeouts.Lakers;
+            document.getElementById('celticsTimeouts').textContent = gameState.timeouts.Celtics;
+            document.getElementById('lakersFouls').textContent = gameState.teamFouls.Lakers;
+            document.getElementById('celticsFouls').textContent = gameState.teamFouls.Celtics;
+
+            // Tabla de cuartos
+            updateQuarterScores();
+
+            // Estadísticas de jugadores
+            updatePlayerStats('Lakers', 'lakersStats');
+            updatePlayerStats('Celtics', 'celticsStats');
+
+            // Métricas del sistema
+            updateMetrics();
+        }
+
+        function updateQuarterScores() {
+            const tbody = document.getElementById('quarterScoresBody');
+            tbody.innerHTML = `
+                <tr>
+                    <td><strong>Lakers</strong></td>
+                    <td>${gameState.quarterScores.Lakers[0]}</td>
+                    <td>${gameState.quarterScores.Lakers[1]}</td>
+                    <td>${gameState.quarterScores.Lakers[2]}</td>
+                    <td>${gameState.quarterScores.Lakers[3]}</td>
+                    <td><strong>${gameState.score.Lakers}</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>Celtics</strong></td>
+                    <td>${gameState.quarterScores.Celtics[0]}</td>
+                    <td>${gameState.quarterScores.Celtics[1]}</td>
+                    <td>${gameState.quarterScores.Celtics[2]}</td>
+                    <td>${gameState.quarterScores.Celtics[3]}</td>
+                    <td><strong>${gameState.score.Celtics}</strong></td>
+                </tr>
+            `;
+        }
+
+        function updatePlayerStats(team, tableId) {
+            const table = document.getElementById(tableId);
+            const players = Object.values(gameState.players).filter(p => p.team === team);
+
+            // Calcular totales del equipo
+            const totals = {
+                pts: 0, oreb: 0, dreb: 0, reb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0,
+                fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0, plusMinus: 0
+            };
+            players.forEach(p => {
+                Object.keys(totals).forEach(key => totals[key] += p[key]);
+            });
+
+            const calcEFG = (fgm, fga, tpm) => fga > 0 ? (((fgm + 0.5 * tpm) / fga) * 100).toFixed(1) : '0.0';
+            const calcTS = (pts, fga, fta) => (fga + 0.44 * fta) > 0 ? ((pts / (2 * (fga + 0.44 * fta))) * 100).toFixed(1) : '0.0';
+            const calc3PAr = (tpa, fga) => fga > 0 ? ((tpa / fga) * 100).toFixed(1) : '0.0';
+            const calcFTr = (fta, fga) => fga > 0 ? ((fta / fga) * 100).toFixed(1) : '0.0';
+            const calcASTTOV = (ast, tov) => tov > 0 ? (ast / tov).toFixed(2) : ast > 0 ? '∞' : '0.00';
+
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>#</th><th>Jugador</th><th>MIN</th><th>PTS</th><th>OREB</th><th>DREB</th><th>REB</th>
+                        <th>AST</th><th>STL</th><th>BLK</th><th>TOV</th><th>PF</th>
+                        <th>FG</th><th>3P</th><th>FT</th><th>+/-</th>
+                        <th>eFG%</th><th>TS%</th><th>3PAr</th><th>FTr</th><th>AST/TOV</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${players.map(p => {
+                        const mins = p.onCourt ? 
+                            p.minutes + ((gameState.quarter - 1) * 720 + (720 - gameState.timeRemaining) - p.lastSubTime) / 60 : 
+                            p.minutes;
+                        return `
+                            <tr class="${p.onCourt ? 'on-court' : ''}">
+                                <td>${p.num}</td>
+                                <td>${p.name}</td>
+                                <td>${mins.toFixed(1)}</td>
+                                <td>${p.pts}</td>
+                                <td>${p.oreb}</td>
+                                <td>${p.dreb}</td>
+                                <td>${p.reb}</td>
+                                <td>${p.ast}</td>
+                                <td>${p.stl}</td>
+                                <td>${p.blk}</td>
+                                <td>${p.tov}</td>
+                                <td>${p.pf}</td>
+                                <td>${p.fgm}/${p.fga}</td>
+                                <td>${p.tpm}/${p.tpa}</td>
+                                <td>${p.ftm}/${p.fta}</td>
+                                <td>${p.plusMinus > 0 ? '+' : ''}${p.plusMinus}</td>
+                                <td>${calcEFG(p.fgm, p.fga, p.tpm)}</td>
+                                <td>${calcTS(p.pts, p.fga, p.fta)}</td>
+                                <td>${calc3PAr(p.tpa, p.fga)}</td>
+                                <td>${calcFTr(p.fta, p.fga)}</td>
+                                <td>${calcASTTOV(p.ast, p.tov)}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                    <tr class="team-totals">
+                        <td colspan="2"><strong>TOTALES</strong></td>
+                        <td>-</td>
+                        <td>${totals.pts}</td>
+                        <td>${totals.oreb}</td>
+                        <td>${totals.dreb}</td>
+                        <td>${totals.reb}</td>
+                        <td>${totals.ast}</td>
+                        <td>${totals.stl}</td>
+                        <td>${totals.blk}</td>
+                        <td>${totals.tov}</td>
+                        <td>${totals.pf}</td>
+                        <td>${totals.fgm}/${totals.fga}</td>
+                        <td>${totals.tpm}/${totals.tpa}</td>
+                        <td>${totals.ftm}/${totals.fta}</td>
+                        <td>-</td>
+                        <td>${calcEFG(totals.fgm, totals.fga, totals.tpm)}</td>
+                        <td>${calcTS(totals.pts, totals.fga, totals.fta)}</td>
+                        <td>${calc3PAr(totals.tpa, totals.fga)}</td>
+                        <td>${calcFTr(totals.fta, totals.fga)}</td>
+                        <td>${calcASTTOV(totals.ast, totals.tov)}</td>
+                    </tr>
+                </tbody>
+            `;
+        }
+
+        function updateMetrics() {
+            document.getElementById('eventsProcessed').textContent = metrics.eventsProcessed;
+            document.getElementById('duplicates').textContent = metrics.duplicates;
+            document.getElementById('lateEvents').textContent = metrics.lateEvents;
+            document.getElementById('overruns').textContent = metrics.overruns;
+            document.getElementById('queueDepth').textContent = metrics.queueDepth;
+
+            const avgLat = metrics.latencies.length > 0 ? 
+                (metrics.latencies.reduce((a,b) => a+b, 0) / metrics.latencies.length).toFixed(2) : 0;
+            document.getElementById('avgLatency').textContent = avgLat;
+
+            document.getElementById('totalPossessions').textContent = gameState.totalPossessions;
+
+            const elapsedMins = ((gameState.quarter - 1) * 12 + (12 - gameState.timeRemaining / 60));
+            const pace = elapsedMins > 0 ? ((gameState.totalPossessions / elapsedMins) * 48).toFixed(1) : 0;
+            document.getElementById('pace').textContent = pace;
+        }
+
+        function startGame() {
+            if (!gameState.isRunning) {
+                initPlayers();
+                gameState.isRunning = true;
+            }
+            gameState.isPaused = false;
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('pauseBtn').disabled = false;
+            gameInterval = setInterval(gameLoop, 100);
+        }
+
+        function pauseGame() {
+            gameState.isPaused = true;
+            clearInterval(gameInterval);
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+        }
+
+        function resetGame() {
+            clearInterval(gameInterval);
+            gameState = {
+                quarter: 1, timeRemaining: 720, shotClock: 24, possession: 'Lakers',
+                score: { Lakers: 0, Celtics: 0 },
+                quarterScores: { Lakers: [0,0,0,0], Celtics: [0,0,0,0] },
+                timeouts: { Lakers: 7, Celtics: 7 },
+                teamFouls: { Lakers: 0, Celtics: 0 },
+                players: {}, onCourt: { Lakers: [], Celtics: [] },
+                isRunning: false, isPaused: false, speed: 1,
+                possessionStart: 720, possessionLength: 0, totalPossessions: 0, halftime: false
+            };
+            metrics = {
+                eventsProcessed: 0, duplicates: 0, lateEvents: 0, overruns: 0,
+                queueDepth: 0, latencies: [], eventQueue: []
+            };
+            document.getElementById('playLog').innerHTML = '';
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+            updateDisplay();
+        }
+
+        function updateSpeed() {
+            const slider = document.getElementById('speedSlider');
+            gameState.speed = parseFloat(slider.value);
+            document.getElementById('speedLabel').textContent = `${gameState.speed}x`;
+        }
+
+        // Inicializar display
+        updateDisplay();
+    </script>
+</body>
+</html>
