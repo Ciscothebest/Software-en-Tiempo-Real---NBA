@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBA Real-Time Stats - Realismo Total</title>
+    <style>
+        :root {
+            --primary: #e63946;
+            --secondary: #1d3557;
+            --accent: #457b9d;
+            --background: #0a0a0a;
+            --card-bg: #1a1a1a;
+            --text: #f1faee;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--background); color: var(--text); padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        .scoreboard {
+            background: linear-gradient(135deg, #1d3557 0%, #16213e 100%);
+            padding: 30px;
+            border-radius: 15px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+            border: 1px solid #333;
+        }
+
+        .team-info { text-align: center; flex: 1; }
+        .team-name { font-size: 2.2rem; font-weight: 800; margin-bottom: 5px; text-transform: uppercase; color: #aaa; }
+        .score { font-size: 5.5rem; font-weight: 900; font-family: 'Arial Black', sans-serif; }
+        .home-color { color: #fdb927; } /* Lakers Gold */
+        .away-color { color: #007a33; } /* Celtics Green */
+
+        .game-clock { text-align: center; flex: 1; background: rgba(0,0,0,0.6); padding: 15px; border-radius: 12px; margin: 0 30px; border: 1px solid #444; }
+        .period { font-size: 1.2rem; color: #888; text-transform: uppercase; margin-bottom: 5px; }
+        .time { font-size: 3.5rem; font-weight: 700; color: #e63946; font-family: 'Courier New', monospace; }
+        .shot-clock { font-size: 1.5rem; color: #ffd700; font-weight: bold; margin-top: 5px; }
+
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; }
+        .card { background-color: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid #222; }
+        .card h2 { margin-bottom: 15px; border-bottom: 2px solid var(--accent); padding-bottom: 8px; font-size: 1.1rem; color: #eee; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; color: #666; font-size: 0.75rem; padding: 8px; text-transform: uppercase; }
+        td { padding: 10px 8px; border-bottom: 1px solid #252525; font-size: 0.85rem; }
+        .pts-col { font-weight: bold; color: #ffd700; }
+
+        .play-log { height: 280px; overflow-y: auto; background: #0f0f0f; padding: 15px; border-radius: 10px; font-size: 0.85rem; border: 1px solid #222; }
+        .play-item { padding: 6px 0; border-bottom: 1px solid #1a1a1a; display: flex; align-items: center; }
+        .play-time { color: #555; min-width: 55px; font-family: monospace; }
+        .play-desc { flex: 1; padding-left: 10px; }
+
+        .controls { display: flex; justify-content: center; gap: 12px; margin-bottom: 25px; }
+        button { padding: 10px 22px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-start { background-color: #2ecc71; color: #000; }
+        .btn-pause { background-color: #f1c40f; color: #000; }
+        .btn-reset { background-color: #e74c3c; color: #fff; }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        button:disabled { background-color: #333; color: #666; cursor: not-allowed; }
+
+        .footer-stats { display: flex; justify-content: space-between; font-size: 0.75rem; color: #555; margin-top: 15px; padding: 10px; border-top: 1px solid #222; }
+        .stat-pill { background: #111; padding: 4px 10px; border-radius: 15px; border: 1px solid #222; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="controls">
+        <button class="btn-start" id="btnStart" onclick="startGame()">Tip-Off</button>
+        <button class="btn-pause" id="btnPause" onclick="pauseGame()" disabled>Pausa</button>
+        <button class="btn-reset" onclick="resetGame()">Reset</button>
+    </div>
+
+    <div class="scoreboard">
+        <div class="team-info">
+            <div class="team-name">Lakers</div>
+            <div class="score home-color" id="homeScore">0</div>
+        </div>
+        <div class="game-clock">
+            <div class="period" id="period">1st Quarter</div>
+            <div class="time" id="timer">12:00</div>
+            <div class="shot-clock" id="shotClock">24</div>
+        </div>
+        <div class="team-info">
+            <div class="team-name">Celtics</div>
+            <div class="score away-color" id="awayScore">0</div>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="card">
+            <h2>Lakers Box Score</h2>
+            <table>
+                <thead><tr><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>FG%</th></tr></thead>
+                <tbody id="homeStats"></tbody>
+            </table>
+        </div>
+        <div class="card">
+            <h2>Celtics Box Score</h2>
+            <table>
+                <thead><tr><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>FG%</th></tr></thead>
+                <tbody id="awayStats"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Play-by-Play</h2>
+        <div class="play-log" id="playLog"></div>
+    </div>
+
+    <div class="footer-stats">
+        <div class="stat-pill">Dijkstra Semaphore: <span id="semVal" style="color:#2ecc71">0</span></div>
+        <div class="stat-pill">NBA Pace: <span id="paceVal" style="color:#ffd700">0.0</span> poss/48m</div>
+        <div class="stat-pill">Possessions: <span id="possCount">0</span></div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// SEMÁFORO DIJKSTRA (Sincronización de Eventos)
+// ============================================================
+const Semaphore = {
+    sval: 0,
+    post() { this.sval++; document.getElementById('semVal').textContent = this.sval; },
+    wait() {
+        if (this.sval > 0) {
+            this.sval--;
+            document.getElementById('semVal').textContent = this.sval;
+            return true;
+        }
+        return false;
+    }
+};
+
+// ============================================================
+// PARÁMETROS REALES NBA
+// ============================================================
+const NBA_CONSTANTS = {
+    PACE_TARGET: 98.5,
+    FG_PCT: 0.475,
+    THREE_PT_FREQ: 0.39,
+    THREE_PT_PCT: 0.365,
+    FT_PCT: 0.785,
+    AST_PCT: 0.62,
+    OFF_REB_PCT: 0.24,
+    TOV_PCT: 0.125,
+    BLK_FREQ: 0.05
+};
+
+const TEAMS = {
+    home: {
+        name: 'Lakers', score: 0, fga: 0, fgm: 0,
+        players: [
+            { name: 'LeBron James', pts: 0, reb: 0, ast: 0, fga: 0, fgm: 0, rating: 97 },
+            { name: 'Anthony Davis', pts: 0, reb: 0, ast: 0, fga: 0, fgm: 0, rating: 95 },
+            { name: 'Austin Reaves', pts: 0, reb: 0, ast: 0, fga: 0, fgm: 0, rating: 84 },
+            { name: 'D. Russell', pts: 0, reb: 0, ast: 0, fga: 0, fgm: 0, rating: 83 },
+            { name: 'Rui Hachimura', pts: 0, reb: 0, ast: 0, fga: 0, fgm: 0, rating: 81 }
+        ]
+    },
+    away: {
+        name: 'Celtics', score: 0, fga: 0, fgm: 0,
+        players: [
+            { name: 'Jayson Tatum', pts: 0, reb: 0, ast: 0, fga: 0, fgm: 0, rating: 96 },
+            { name: 'Jaylen Brown', pts: 0, reb: 0, ast: 0, fga: 0, fgm: 0, rating: 93 },
+            { name: 'K. Porzingis', pts: 0, reb: 0, ast: 0, fga: 0, fgm: 0, rating: 88 },
+            { name: 'Derrick White', pts: 0, reb: 0, ast: 0, fga: 0, fgm: 0, rating: 86 },
+            { name: 'Jrue Holiday', pts: 0, reb: 0, ast: 0, fga: 0, fgm: 0, rating: 85 }
+        ]
+    }
+};
+
+let gameState = {
+    running: false,
+    paused: false,
+    quarter: 1,
+    time: 720,
+    shotClock: 24,
+    possession: 'home',
+    possessionCount: 0,
+    eventQueue: []
+};
+
+const TICK_MS = 100;
+const GAME_SEC_PER_TICK = 0.5;
+// Probabilidad de iniciar secuencia de tiro/pérdida por tick para cumplir el Pace
+const POSS_START_PROB = 0.042; 
+
+let gameInterval = null;
+
+// ============================================================
+// MOTOR DE SIMULACIÓN PROFESIONAL
+// ============================================================
+
+function pickPlayer(team) {
+    const players = TEAMS[team].players;
+    const total = players.reduce((s, p) => s + p.rating, 0);
+    let r = Math.random() * total;
+    for (let p of players) { r -= p.rating; if (r <= 0) return p; }
+    return players[0];
+}
+
+function generatePossessionSequence(team) {
+    const opp = team === 'home' ? 'away' : 'home';
+    const player = pickPlayer(team);
+    const events = [];
+    const rand = Math.random();
+
+    // 1. Manejo de Pérdidas (Turnovers)
+    if (rand < NBA_CONSTANTS.TOV_PCT) {
+        events.push({ text: `⚠️ Turnover: ${player.name} pierde el control del balón`, type: 'tov' });
+        events.push({ type: 'change', team: opp });
+        return events;
+    }
+
+    // 2. Manejo de Faltas y Tiros Libres
+    if (rand < 0.22) { 
+        const ftCount = Math.random() < 0.15 ? 3 : 2;
+        let made = 0;
+        for(let i=0; i<ftCount; i++) if(Math.random() < NBA_CONSTANTS.FT_PCT) made++;
+        player.pts += made;
+        TEAMS[team].score += made;
+        events.push({ text: `🚨 Falta personal. ${player.name} va a la línea: ${made}/${ftCount} FT`, type: 'ft' });
+        events.push({ type: 'change', team: opp });
+        return events;
+    }
+
+    // 3. Secuencia de Tiro
+    const is3 = Math.random() < NBA_CONSTANTS.THREE_PT_FREQ;
+    const fgPct = is3 ? NBA_CONSTANTS.THREE_PT_PCT : 0.52; // 2pt % es mayor que el promedio total
+    const isMade = Math.random() < fgPct;
+    const pts = is3 ? 3 : 2;
+
+    player.fga++; TEAMS[team].fga++;
+
+    if (isMade) {
+        player.fgm++; TEAMS[team].fgm++;
+        player.pts += pts;
+        TEAMS[team].score += pts;
+        let astText = "";
+        if (Math.random() < NBA_CONSTANTS.AST_PCT) {
+            const assister = pickPlayer(team);
+            if (assister !== player) { assister.ast++; astText = ` (AST: ${assister.name})`; }
+        }
+        events.push({ text: `🏀 ${player.name} convierte desde ${is3?'larga':'media'} distancia +${pts}${astText}`, type: 'score' });
+        events.push({ type: 'change', team: opp });
+    } else {
+        // Tapón?
+        if (Math.random() < NBA_CONSTANTS.BLK_FREQ) {
+            const blocker = pickPlayer(opp);
+            events.push({ text: `🛡️ ¡TAPÓN de ${blocker.name}! El tiro de ${player.name} es rechazado`, type: 'blk' });
+        } else {
+            events.push({ text: `❌ ${player.name} falla el lanzamiento de ${pts}pts`, type: 'miss' });
+        }
+
+        // Rebote
+        if (Math.random() < NBA_CONSTANTS.OFF_REB_PCT) {
+            const reb = pickPlayer(team);
+            reb.reb++;
+            events.push({ text: `💪 Rebote ofensivo: ${reb.name} mantiene la posesión`, type: 'reb' });
+            events.push({ type: 'reset_shot_clock', val: 14 }); // Regla NBA: 14s tras rebote off
+        } else {
+            const reb = pickPlayer(opp);
+            reb.reb++;
+            events.push({ text: `🔄 Rebote defensivo: ${reb.name}`, type: 'reb' });
+            events.push({ type: 'change', team: opp });
+        }
+    }
+    return events;
+}
+
+function gameLoop() {
+    if (!gameState.running || gameState.paused) return;
+
+    gameState.time -= GAME_SEC_PER_TICK;
+    gameState.shotClock -= GAME_SEC_PER_TICK;
+
+    // Productor: Iniciar jugada si no hay nada pendiente
+    if (gameState.eventQueue.length === 0 && Math.random() < POSS_START_PROB) {
+        const seq = generatePossessionSequence(gameState.possession);
+        seq.forEach(ev => {
+            gameState.eventQueue.push(ev);
+            Semaphore.post();
+        });
+    }
+
+    // Consumidor: Procesar evento vía Semáforo
+    if (gameState.eventQueue.length > 0 && Semaphore.wait()) {
+        const ev = gameState.eventQueue.shift();
+        if (ev.type === 'change') {
+            gameState.possession = ev.team;
+            gameState.possessionCount++;
+            gameState.shotClock = 24;
+        } else if (ev.type === 'reset_shot_clock') {
+            gameState.shotClock = ev.val;
+        } else {
+            addPlay(ev.text);
+        }
+    }
+
+    // Violación de reloj
+    if (gameState.shotClock <= 0) {
+        addPlay(`⏱️ Shot Clock Violation - ${TEAMS[gameState.possession].name}`);
+        gameState.possession = gameState.possession === 'home' ? 'away' : 'home';
+        gameState.shotClock = 24;
+        gameState.eventQueue = [];
+    }
+
+    // Fin de cuarto
+    if (gameState.time <= 0) {
+        if (gameState.quarter < 4) {
+            gameState.quarter++;
+            gameState.time = 720;
+            addPlay(`🔔 End of Quarter. Starting Q${gameState.quarter}`);
+        } else {
+            endGame();
+        }
+    }
+
+    updateUI();
+}
+
+// ============================================================
+// UI & CONTROLS
+// ============================================================
+
+function updateUI() {
+    document.getElementById('homeScore').textContent = TEAMS.home.score;
+    document.getElementById('awayScore').textContent = TEAMS.away.score;
+
+    const m = Math.floor(gameState.time / 60);
+    const s = Math.floor(gameState.time % 60);
+    document.getElementById('timer').textContent = `${m}:${s.toString().padStart(2, '0')}`;
+    document.getElementById('shotClock').textContent = Math.ceil(gameState.shotClock);
+    document.getElementById('period').textContent = `${gameState.quarter}${getOrdinal(gameState.quarter)} Quarter`;
+
+    ['home', 'away'].forEach(t => {
+        const tbody = document.getElementById(`${t}Stats`);
+        tbody.innerHTML = TEAMS[t].players.map(p => {
+            const fgPct = p.fga > 0 ? ((p.fgm/p.fga)*100).toFixed(0) + '%' : '0%';
+            return `<tr><td>${p.name}</td><td class="pts-col">${p.pts}</td><td>${p.reb}</td><td>${p.ast}</td><td>${fgPct}</td></tr>`;
+        }).join('');
+    });
+
+    const elapsedMin = ((gameState.quarter - 1) * 12) + (12 - gameState.time / 60);
+    const pace = elapsedMin > 0 ? ((gameState.possessionCount / elapsedMin) * 48).toFixed(1) : 0;
+    document.getElementById('paceVal').textContent = pace;
+    document.getElementById('possCount').textContent = gameState.possessionCount;
+}
+
+function getOrdinal(n) { return n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'; }
+
+function addPlay(text) {
+    const log = document.getElementById('playLog');
+    const item = document.createElement('div');
+    item.className = 'play-item';
+    const m = Math.floor(gameState.time / 60);
+    const s = Math.floor(gameState.time % 60);
+    item.innerHTML = `<span class="play-time">${m}:${s.toString().padStart(2, '0')}</span><span class="play-desc">${text}</span>`;
+    log.insertBefore(item, log.firstChild);
+}
+
+function startGame() {
+    gameState.running = true;
+    gameState.paused = false;
+    document.getElementById('btnStart').disabled = true;
+    document.getElementById('btnPause').disabled = false;
+    gameInterval = setInterval(gameLoop, TICK_MS);
+}
+
+function pauseGame() {
+    gameState.paused = true;
+    document.getElementById('btnStart').disabled = false;
+    document.getElementById('btnPause').disabled = true;
+    clearInterval(gameInterval);
+}
+
+function resetGame() { location.reload(); }
+
+function endGame() {
+    gameState.running = false;
+    clearInterval(gameInterval);
+    addPlay("🏆 FINAL SCORE: Lakers " + TEAMS.home.score + " - Celtics " + TEAMS.away.score);
+}
+
+updateUI();
+</script>
+</body>
+</html>
