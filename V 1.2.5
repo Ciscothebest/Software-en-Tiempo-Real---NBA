@@ -1,0 +1,1713 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema RT NBA - Simulación Realista con Semáforo de Dijkstra</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #c9082a 0%, #17408b 100%);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            color: #333;
+        }
+        
+        .card h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            border-bottom: 3px solid #c9082a;
+            padding-bottom: 10px;
+            color: #17408b;
+        }
+        
+        .scoreboard {
+            background: linear-gradient(135deg, #17408b 0%, #c9082a 100%);
+            border-radius: 15px;
+            padding: 30px;
+            color: white;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+        
+        .game-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .quarter-info {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .game-clock {
+            font-size: 48px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .teams-display {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 20px 0;
+        }
+        
+        .team-box {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .team-logo {
+            font-size: 64px;
+            margin-bottom: 10px;
+        }
+        
+        .team-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .team-score {
+            font-size: 72px;
+            font-weight: bold;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.4);
+        }
+        
+        .vs-divider {
+            font-size: 32px;
+            opacity: 0.7;
+            padding: 0 20px;
+        }
+        
+        .quarter-scores {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        
+        .quarter-score {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 15px;
+            border-radius: 8px;
+        }
+        
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        .stats-table th {
+            background: #f5f5f5;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #ddd;
+            position: sticky;
+            top: 0;
+        }
+        
+        .stats-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .stats-table tr:hover {
+            background: #f9f9f9;
+        }
+        
+        .player-name {
+            font-weight: 600;
+            color: #17408b;
+        }
+        
+        .player-on-court {
+            background: #e8f5e9 !important;
+        }
+        
+        .player-on-bench {
+            opacity: 0.6;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .status-playing {
+            background: #4caf50;
+        }
+        
+        .status-bench {
+            background: #9e9e9e;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .btn-primary {
+            background: #17408b;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #0d2a5c;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(23, 64, 139, 0.4);
+        }
+        
+        .btn-danger {
+            background: #c9082a;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #a00622;
+        }
+        
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .metric:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .metric-value {
+            font-weight: 600;
+            color: #17408b;
+            font-size: 16px;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        
+        .status-live {
+            background: #c9082a;
+            color: white;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .status-halftime {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .status-final {
+            background: #2c3e50;
+            color: white;
+        }
+        
+        .status-stopped {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .event-log {
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 13px;
+        }
+        
+        .event-item {
+            padding: 10px;
+            margin-bottom: 6px;
+            background: #f9f9f9;
+            border-left: 4px solid #17408b;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .event-shot-made {
+            border-left-color: #4caf50;
+        }
+        
+        .event-shot-missed {
+            border-left-color: #f44336;
+        }
+        
+        .event-substitution {
+            border-left-color: #ff9800;
+            background: #fff3e0;
+        }
+        
+        .event-timeout {
+            border-left-color: #9c27b0;
+            background: #f3e5f5;
+        }
+        
+        .event-time {
+            color: #999;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .alert {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+        
+        .possession-indicator {
+            display: inline-block;
+            width: 0;
+            height: 0;
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+            border-left: 12px solid #ffd700;
+            margin-left: 10px;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50%, 100% { opacity: 1; }
+            25%, 75% { opacity: 0.3; }
+        }
+        
+        .team-fouls {
+            font-size: 12px;
+            margin-top: 5px;
+            opacity: 0.8;
+        }
+        
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .speed-control label {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .speed-control select {
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏀 NBA Real-Time Statistics System</h1>
+            <p class="subtitle">Simulación Realista de Partido NBA con Semáforo de Dijkstra | Ingeniería de Software en Tiempo Real - UNIBE</p>
+        </header>
+
+        <div class="card">
+            <h2>⚙️ Panel de Control del Juego</h2>
+            <div class="controls">
+                <button class="btn-primary" id="btnStart" onclick="startGame()">▶️ Iniciar Partido</button>
+                <button class="btn-danger" id="btnPause" onclick="pauseGame()" disabled>⏸️ Pausar</button>
+                <button class="btn-success" id="btnResume" onclick="resumeGame()" disabled>▶️ Reanudar</button>
+                <button class="btn-warning" onclick="callTimeout()">⏱️ Tiempo Fuera</button>
+                <button class="btn-danger" onclick="resetGame()">🔄 Reiniciar Partido</button>
+            </div>
+            <div class="speed-control">
+                <label>Velocidad de simulación:</label>
+                <select id="speedControl" onchange="changeSpeed()">
+                    <option value="0.5">0.5x (Lento)</option>
+                    <option value="1" selected>1x (Normal)</option>
+                    <option value="2">2x (Rápido)</option>
+                    <option value="5">5x (Muy Rápido)</option>
+                    <option value="10">10x (Ultra Rápido)</option>
+                </select>
+            </div>
+
+        </div>
+
+        <div class="card scoreboard">
+            <div class="game-header">
+                <div class="quarter-info" id="quarterInfo">CUARTO 1</div>
+                <div class="game-clock" id="gameClock">12:00</div>
+                <div id="gameStatus"></div>
+            </div>
+            
+            <div class="teams-display">
+                <div class="team-box">
+                    <div class="team-logo">🟣🟡</div>
+                    <div class="team-name">
+                    LOS ANGELES LAKERS
+                    <span id="homePossession"></span>
+                    </div>
+                    <div class="team-score" id="homeScore">0</div>
+                    <div class="team-fouls">Faltas: <span id="homeFouls">0</span></div>
+                </div>
+                
+                <div class="vs-divider">VS</div>
+                
+                <div class="team-box">
+                    <div class="team-logo">🟢⚪</div>
+                    <div class="team-name">
+                    BOSTON CELTICS
+                    <span id="awayPossession"></span>
+                    </div>
+                    <div class="team-score" id="awayScore">0</div>
+                    <div class="team-fouls">Faltas: <span id="awayFouls">0</span></div>
+                </div>
+            </div>
+            
+            <div class="quarter-scores" id="quarterScores"></div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>📊 Estadísticas Lakers (Local)</h2>
+                <div style="max-height: 500px; overflow-y: auto;">
+                    <table class="stats-table">
+                    <thead>
+                    <tr>
+                    <th>Estado</th>
+                    <th>Jugador</th>
+                    <th>MIN</th>
+                    <th>PTS</th>
+                    <th>REB</th>
+                    <th>AST</th>
+                    <th>FG</th>
+                    <th>3P</th>
+                    <th>FT</th>
+                    <th>STL</th>
+                    <th>BLK</th>
+                    <th>TOV</th>
+                    <th>PF</th>
+                    </tr>
+                    </thead>
+                    <tbody id="homeStats"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📊 Estadísticas Celtics (Visitante)</h2>
+                <div style="max-height: 500px; overflow-y: auto;">
+                    <table class="stats-table">
+                    <thead>
+                    <tr>
+                    <th>Estado</th>
+                    <th>Jugador</th>
+                    <th>MIN</th>
+                    <th>PTS</th>
+                    <th>REB</th>
+                    <th>AST</th>
+                    <th>FG</th>
+                    <th>3P</th>
+                    <th>FT</th>
+                    <th>STL</th>
+                    <th>BLK</th>
+                    <th>TOV</th>
+                    <th>PF</th>
+                    </tr>
+                    </thead>
+                    <tbody id="awayStats"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>📈 Métricas del Sistema RT</h2>
+                <div class="metric">
+                    <span class="metric-label">Eventos Procesados</span>
+                    <span class="metric-value" id="metricProcessed">0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Duplicados Detectados</span>
+                    <span class="metric-value" id="metricDuplicates">0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Eventos Tardíos</span>
+                    <span class="metric-value" id="metricLate">0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Overruns (>50ms)</span>
+                    <span class="metric-value" id="metricOverruns">0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Cola de Eventos</span>
+                    <span class="metric-value" id="metricQueue">0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Latencia Promedio</span>
+                    <span class="metric-value" id="metricLatency">0ms</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Posesiones Totales</span>
+                    <span class="metric-value" id="metricPossessions">0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">🔒 Operaciones Wait()</span>
+                    <span class="metric-value" id="metricSemWait">0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">🔓 Operaciones Signal()</span>
+                    <span class="metric-value" id="metricSemSignal">0</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📝 Play-by-Play (Jugada por Jugada)</h2>
+                <div id="eventLog" class="event-log">
+                    <div style="text-align:center;color:#999;padding:20px;">Esperando inicio del partido...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" id="exceptionsCard" style="display:none;">
+            <h2>⚠️ Excepciones del Sistema</h2>
+            <div id="exceptionsList"></div>
+        </div>
+    </div>
+
+    <script>
+        // ====
+        // SEMÁFORO CLÁSICO DE DIJKSTRA
+        // ====
+        
+        /**
+         * Implementación del Semáforo Clásico de Dijkstra
+         * 
+         * Un semáforo es un entero no negativo que sólo puede ser actualizado mediante
+         * las operaciones wait() (también llamada P) y signal() (también llamada V).
+         * 
+         * OPERACIÓN WAIT (P):
+         * - Si el valor del semáforo S > 0, decrementa su valor en uno y continúa
+         * - Si el valor del semáforo S <= 0, encola la operación hasta que S > 0
+         * 
+         * OPERACIÓN SIGNAL (V):
+         * - Incrementa el valor del semáforo S en uno
+         * - Si hay operaciones encoladas, ejecuta la primera de la cola
+         * 
+         * PROPÓSITO EN ESTE SISTEMA:
+         * Los semáforos protegen las secciones críticas del código NBA garantizando
+         * exclusión mutua en el acceso a recursos compartidos como:
+         * - Cola de eventos (eventQueue)
+         * - Procesamiento de eventos (processEvent)
+         * - Actualizaciones de estadísticas de jugadores
+         * - Actualizaciones de marcador y métricas
+         */
+        class Semaphore {
+            /**
+             * Constructor del semáforo
+             * @param {number} initialValue - Valor inicial del contador (debe ser >= 0)
+             */
+            constructor(initialValue = 1) {
+                if (initialValue < 0) {
+                    throw new Error('El valor inicial del semáforo no puede ser negativo');
+                }
+                
+                // Contador del semáforo (valor actual)
+                this.counter = initialValue;
+                
+                // Cola de operaciones pendientes (cuando counter = 0)
+                // Cada elemento es un callback que se ejecutará cuando el semáforo se libere
+                this.queue = [];
+                
+                // Métricas para monitoreo
+                this.waitCount = 0;    // Total de llamadas a wait()
+                this.signalCount = 0;  // Total de llamadas a signal()
+            }
+            
+            /**
+             * Operación WAIT (P de Dijkstra)
+             * Solicita acceso a la sección crítica
+             * 
+             * @param {Function} callback - Función a ejecutar cuando se obtenga acceso
+             * 
+             * COMPORTAMIENTO:
+             * - Si counter > 0: Decrementa counter, ejecuta callback inmediatamente
+             * - Si counter <= 0: Encola callback para ejecución posterior
+             */
+            wait(callback) {
+                this.waitCount++;
+                
+                if (this.counter > 0) {
+                    // Hay recursos disponibles: decrementar y ejecutar
+                    this.counter--;
+                    
+                    // Ejecutar callback de forma asíncrona para simular comportamiento real
+                    setTimeout(() => {
+                    callback();
+                    }, 0);
+                } else {
+                    // No hay recursos: encolar la operación
+                    this.queue.push(callback);
+                }
+            }
+            
+            /**
+             * Operación SIGNAL (V de Dijkstra)
+             * Libera el acceso a la sección crítica
+             * 
+             * COMPORTAMIENTO:
+             * - Incrementa counter en 1
+             * - Si hay callbacks en cola, ejecuta el primero (FIFO)
+             */
+            signal() {
+                this.signalCount++;
+                
+                if (this.queue.length > 0) {
+                    // Hay operaciones esperando: ejecutar la primera de la cola
+                    const callback = this.queue.shift();
+                    
+                    // Ejecutar de forma asíncrona
+                    setTimeout(() => {
+                    callback();
+                    }, 0);
+                } else {
+                    // No hay operaciones esperando: solo incrementar counter
+                    this.counter++;
+                }
+            }
+            
+            /**
+             * Obtiene el valor actual del contador
+             * (Útil para debugging y monitoreo)
+             */
+            getValue() {
+                return this.counter;
+            }
+            
+            /**
+             * Obtiene el número de operaciones encoladas
+             */
+            getQueueLength() {
+                return this.queue.length;
+            }
+            
+            /**
+             * Obtiene estadísticas del semáforo
+             */
+            getStats() {
+                return {
+                    counter: this.counter,
+                    queueLength: this.queue.length,
+                    totalWaits: this.waitCount,
+                    totalSignals: this.signalCount
+                };
+            }
+        }
+        
+        // ====
+        // CONFIGURACIÓN DE JUGADORES NBA REALISTA
+        // ====
+        
+        const ROSTER = {
+            home: [
+                // Quinteto titular
+                { name: 'LeBron James', pos: 'SF', rating: 95, starter: true },
+                { name: 'Anthony Davis', pos: 'PF', rating: 94, starter: true },
+                { name: 'D\'Angelo Russell', pos: 'PG', rating: 82, starter: true },
+                { name: 'Austin Reaves', pos: 'SG', rating: 78, starter: true },
+                { name: 'Rui Hachimura', pos: 'PF', rating: 76, starter: true },
+                // Banca
+                { name: 'Jarred Vanderbilt', pos: 'PF', rating: 74, starter: false },
+                { name: 'Taurean Prince', pos: 'SF', rating: 72, starter: false },
+                { name: 'Jaxson Hayes', pos: 'C', rating: 70, starter: false },
+                { name: 'Cam Reddish', pos: 'SF', rating: 69, starter: false },
+                { name: 'Max Christie', pos: 'SG', rating: 68, starter: false },
+                { name: 'Jalen Hood-Schifino', pos: 'PG', rating: 67, starter: false },
+                { name: 'Christian Wood', pos: 'C', rating: 75, starter: false }
+            ],
+            away: [
+                // Quinteto titular
+                { name: 'Jayson Tatum', pos: 'SF', rating: 95, starter: true },
+                { name: 'Jaylen Brown', pos: 'SG', rating: 90, starter: true },
+                { name: 'Kristaps Porzingis', pos: 'C', rating: 87, starter: true },
+                { name: 'Derrick White', pos: 'PG', rating: 83, starter: true },
+                { name: 'Jrue Holiday', pos: 'SG', rating: 85, starter: true },
+                // Banca
+                { name: 'Al Horford', pos: 'C', rating: 79, starter: false },
+                { name: 'Malcolm Brogdon', pos: 'PG', rating: 78, starter: false },
+                { name: 'Robert Williams III', pos: 'C', rating: 77, starter: false },
+                { name: 'Sam Hauser', pos: 'SF', rating: 72, starter: false },
+                { name: 'Payton Pritchard', pos: 'PG', rating: 71, starter: false },
+                { name: 'Oshae Brissett', pos: 'PF', rating: 69, starter: false },
+                { name: 'Svi Mykhailiuk', pos: 'SG', rating: 68, starter: false }
+            ]
+        };
+
+        // ====
+        // SISTEMA DE JUEGO NBA REALISTA CON SEMÁFOROS
+        // ====
+        
+        class NBAGame {
+            constructor() {
+                this.quarter = 1;
+                this.clockMs = 12 * 60 * 1000; // 12 minutos por cuarto
+                this.gameState = 'stopped'; // stopped, playing, halftime, final
+                this.possession = Math.random() > 0.5 ? 'home' : 'away';
+                this.shotClock = 24;
+                
+                this.score = { home: 0, away: 0 };
+                this.quarterScores = [
+                    { home: 0, away: 0 },
+                    { home: 0, away: 0 },
+                    { home: 0, away: 0 },
+                    { home: 0, away: 0 }
+                ];
+                this.teamFouls = { home: 0, away: 0 };
+                
+                this.players = this.initializePlayers();
+                this.onCourt = { home: [], away: [] };
+                this.setStartingLineup();
+                
+                this.eventQueue = [];
+                this.eventLog = [];
+                this.exceptions = [];
+                this.eventCounter = 0;
+                this.possessionCounter = 0;
+                
+                this.metrics = {
+                    processed: 0,
+                    duplicates: 0,
+                    late: 0,
+                    overruns: 0,
+                    queue_depth: 0,
+                    latencies: []
+                };
+                
+                this.gameInterval = null;
+                this.processingInterval = null;
+                this.simulationSpeed = 1;
+                
+                this.lastSubstitutionTime = { home: 0, away: 0 };
+                this.timeoutsRemaining = { home: 7, away: 7 };
+                
+                // ====
+                // INICIALIZACIÓN DE SEMÁFOROS DE DIJKSTRA
+                // ====
+                
+                /**
+                 * SEMÁFORO PARA COLA DE EVENTOS (eventQueue)
+                 * Protege las operaciones push() y shift() en eventQueue
+                 * Valor inicial = 1 (mutex binario para exclusión mutua)
+                 */
+                this.queueSemaphore = new Semaphore(1);
+                
+                /**
+                 * SEMÁFORO PARA PROCESAMIENTO DE EVENTOS
+                 * Protege la función processEvent() completa
+                 * Valor inicial = 1 (mutex binario)
+                 */
+                this.processSemaphore = new Semaphore(1);
+                
+                /**
+                 * SEMÁFORO PARA ESTADÍSTICAS DE JUGADORES
+                 * Protege actualizaciones de stats de jugadores
+                 * Valor inicial = 1 (mutex binario)
+                 */
+                this.statsSemaphore = new Semaphore(1);
+                
+                /**
+                 * SEMÁFORO PARA MARCADOR Y MÉTRICAS
+                 * Protege actualizaciones de score, quarterScores y métricas
+                 * Valor inicial = 1 (mutex binario)
+                 */
+                this.scoreSemaphore = new Semaphore(1);
+            }
+            
+            initializePlayers() {
+                const players = { home: {}, away: {} };
+                
+                ['home', 'away'].forEach(team => {
+                    ROSTER[team].forEach(p => {
+                    players[team][p.name] = {
+                    ...p,
+                    onCourt: p.starter,
+                    stats: {
+                    minutes: 0,
+                    pts: 0,
+                    reb: 0,
+                    ast: 0,
+                    stl: 0,
+                    blk: 0,
+                    tov: 0,
+                    pf: 0,
+                    fgm: 0, fga: 0,
+                    tpm: 0, tpa: 0,
+                    ftm: 0, fta: 0
+                    },
+                    lastSubTime: 0
+                    };
+                    });
+                });
+                
+                return players;
+            }
+            
+            setStartingLineup() {
+                ['home', 'away'].forEach(team => {
+                    this.onCourt[team] = Object.values(this.players[team])
+                    .filter(p => p.starter)
+                    .slice(0, 5);
+                });
+            }
+            
+            start() {
+                this.gameState = 'playing';
+                this.startGameLoop();
+                this.startProcessing();
+            }
+            
+            pause() {
+                this.gameState = 'paused';
+                if (this.gameInterval) clearInterval(this.gameInterval);
+            }
+            
+            resume() {
+                if (this.gameState === 'paused') {
+                    this.gameState = 'playing';
+                    this.startGameLoop();
+                }
+            }
+            
+            reset() {
+                this.pause();
+                if (this.processingInterval) clearInterval(this.processingInterval);
+                
+                this.quarter = 1;
+                this.clockMs = 12 * 60 * 1000;
+                this.gameState = 'stopped';
+                this.possession = Math.random() > 0.5 ? 'home' : 'away';
+                this.shotClock = 24;
+                this.score = { home: 0, away: 0 };
+                this.quarterScores = [
+                    { home: 0, away: 0 },
+                    { home: 0, away: 0 },
+                    { home: 0, away: 0 },
+                    { home: 0, away: 0 }
+                ];
+                this.teamFouls = { home: 0, away: 0 };
+                this.players = this.initializePlayers();
+                this.setStartingLineup();
+                this.eventQueue = [];
+                this.eventLog = [];
+                this.exceptions = [];
+                this.eventCounter = 0;
+                this.possessionCounter = 0;
+                this.metrics = {
+                    processed: 0,
+                    duplicates: 0,
+                    late: 0,
+                    overruns: 0,
+                    queue_depth: 0,
+                    latencies: []
+                };
+                this.lastSubstitutionTime = { home: 0, away: 0 };
+                this.timeoutsRemaining = { home: 7, away: 7 };
+                
+                // Reinicializar semáforos
+                this.queueSemaphore = new Semaphore(1);
+                this.processSemaphore = new Semaphore(1);
+                this.statsSemaphore = new Semaphore(1);
+                this.scoreSemaphore = new Semaphore(1);
+            }
+            
+            startGameLoop() {
+               
+                const TICK_MS = 100; // game-clock ms advanced per tick
+                const tickMs = TICK_MS / this.simulationSpeed;
+
+           
+                const EVENT_PROB_PER_TICK = 0.0071;
+
+                this.gameInterval = setInterval(() => {
+                    if (this.gameState !== 'playing') return;
+                    
+                    // Advance game clock
+                    this.clockMs -= TICK_MS;
+                    this.shotClock -= TICK_MS / 1000;
+
+                    // Shot clock violation (24s)
+                    if (this.shotClock <= 0) {
+                        this.shotClock = 24;
+                        // Turnover due to shot clock violation
+                        const player = this.getRandomPlayerOnCourt(this.possession);
+                        this.createEvent('TURNOVER', this.possession, player);
+                    }
+                    
+                    // Update player minutes (protected by semaphore)
+                    this.statsSemaphore.wait(() => {
+                        // CRITICAL SECTION: update player minutes
+                        this.onCourt.home.forEach(p => {
+                            this.players.home[p.name].stats.minutes += TICK_MS / 60000;
+                        });
+                        this.onCourt.away.forEach(p => {
+                            this.players.away[p.name].stats.minutes += TICK_MS / 60000;
+                        });
+                        this.statsSemaphore.signal();
+                    });
+                    
+                    // Generate game events at realistic NBA pace (~1 possession every 14s)
+                    if (Math.random() < EVENT_PROB_PER_TICK * this.simulationSpeed) {
+                        this.generateGameEvent();
+                    }
+                    
+                    // Automatic substitutions: consider every ~3 minutes of game time
+                    if (this.clockMs % 180000 < TICK_MS) {
+                        this.considerSubstitutions('home');
+                        this.considerSubstitutions('away');
+                    }
+                    
+                    // End of quarter
+                    if (this.clockMs <= 0) {
+                        this.endQuarter();
+                    }
+                    
+                }, tickMs);
+            }
+            
+            startProcessing() {
+                this.processingInterval = setInterval(() => {
+                    // Procesar hasta 10 eventos por tick
+                    for (let i = 0; i < 10; i++) {
+                    // USAR SEMÁFORO PARA PROTEGER ACCESO A eventQueue (shift)
+                    this.queueSemaphore.wait(() => {
+                    // SECCIÓN CRÍTICA: Acceso a eventQueue
+                    if (this.eventQueue.length > 0) {
+                    const event = this.eventQueue.shift();
+                    
+                    // Liberar semáforo de cola antes de procesar
+                    this.queueSemaphore.signal();
+                    
+                    // Procesar evento (también protegido)
+                    this.processEvent(event);
+                    } else {
+                    // Cola vacía, solo liberar
+                    this.queueSemaphore.signal();
+                    }
+                    });
+                    }
+                    
+                    // Actualizar métrica de profundidad de cola
+                    this.metrics.queue_depth = this.eventQueue.length;
+                }, 20);
+            }
+            
+            generateGameEvent() {
+                // NBA real stats per game (per team, ~100 possessions):
+                // FGA: ~88, Turnovers: ~14, Fouls: ~20, Steals: ~7, Blocks: ~5
+                // Each possession ends with: shot (~85%), turnover (~13%), foul (~2%)
+                // Assists occur on ~60% of made FGs
+                const rand = Math.random();
+                const offense = this.possession;
+                
+                let eventType;
+                // Possession-ending events (weighted by NBA averages)
+                if (rand < 0.82)       eventType = 'SHOT';       // ~82% of possessions end in a shot attempt
+                else if (rand < 0.95)  eventType = 'TURNOVER';   // ~13% turnovers
+                else                   eventType = 'FOUL';        // ~5% fouls drawn
+                
+                const player = this.getRandomPlayerOnCourt(offense);
+                this.createEvent(eventType, offense, player);
+            }
+            
+            createEvent(type, team, player) {
+                this.eventCounter++;
+                const event = {
+                    event_id: `EVT_${this.eventCounter}`,
+                    game_id: 'NBA_LAL_BOS_2026',
+                    quarter: this.quarter,
+                    clock_ms: this.clockMs,
+                    event_time_ms: (this.quarter - 1) * 12 * 60 * 1000 + (12 * 60 * 1000 - this.clockMs),
+                    type: type,
+                    team: team,
+                    player: player,
+                    received_at_ms: Date.now()
+                };
+                
+                // Procesar lógica específica del evento
+                switch(type) {
+                    case 'SHOT':
+                    this.processShot(event);
+                    break;
+                    case 'TURNOVER':
+                    this.processTurnover(event);
+                    break;
+                    case 'REBOUND':
+                    this.processRebound(event);
+                    break;
+                    case 'ASSIST':
+                    event.assisted_player = this.getRandomPlayerOnCourt(team);
+                    break;
+                    case 'STEAL':
+                    event.stolen_from = this.getRandomPlayerOnCourt(team === 'home' ? 'away' : 'home');
+                    this.processSteal(event);
+                    break;
+                    case 'BLOCK':
+                    event.blocked_player = this.getRandomPlayerOnCourt(team === 'home' ? 'away' : 'home');
+                    break;
+                    case 'FOUL':
+                    this.processFoul(event);
+                    break;
+                }
+                
+                // USAR SEMÁFORO PARA PROTEGER ACCESO A eventQueue (push)
+                this.queueSemaphore.wait(() => {
+                    // SECCIÓN CRÍTICA: Añadir evento a la cola
+                    this.eventQueue.push(event);
+                    
+                    // Liberar semáforo
+                    this.queueSemaphore.signal();
+                });
+            }
+            
+            processShot(event) {
+                // PROTEGER ACCESO A ESTADÍSTICAS DEL JUGADOR
+                this.statsSemaphore.wait(() => {
+                    // SECCIÓN CRÍTICA: Actualización de estadísticas de tiro
+                    const player = this.players[event.team][event.player];
+                    const shotType = Math.random();
+                    
+                    if (shotType < 0.35) {
+                    event.shot_type = '3PT';
+                    event.made = Math.random() < (0.30 + player.rating / 300);
+                    player.stats.tpa++;
+                    if (event.made) {
+                    player.stats.tpm++;
+                    player.stats.fga++;
+                    player.stats.fgm++;
+                    event.points = 3;
+                    } else {
+                    player.stats.fga++;
+                    }
+                    } else if (shotType < 0.85) {
+                    event.shot_type = '2PT';
+                    event.made = Math.random() < (0.45 + player.rating / 250);
+                    player.stats.fga++;
+                    if (event.made) {
+                    player.stats.fgm++;
+                    event.points = 2;
+                    }
+                    } else {
+                    event.shot_type = 'FT';
+                    event.made = Math.random() < (0.75 + player.rating / 400);
+                    player.stats.fta++;
+                    if (event.made) {
+                    player.stats.ftm++;
+                    event.points = 1;
+                    }
+                    }
+                    
+                    if (event.made) {
+                    player.stats.pts += event.points;
+                    
+                    // Liberar semáforo de stats antes de actualizar score
+                    this.statsSemaphore.signal();
+                    
+                    // PROTEGER ACTUALIZACIÓN DE MARCADOR
+                    this.scoreSemaphore.wait(() => {
+                    // SECCIÓN CRÍTICA: Actualización de score
+                    this.score[event.team] += event.points;
+                    this.quarterScores[this.quarter - 1][event.team] += event.points;
+                    
+                    this.scoreSemaphore.signal();
+                    });
+                    
+                    // Cambio de posesión
+                    this.possession = event.team === 'home' ? 'away' : 'home';
+                    this.shotClock = 24;
+                    this.possessionCounter++;
+                    } else {
+                    // Liberar semáforo de stats
+                    this.statsSemaphore.signal();
+                    
+                    // Rebote después de fallo
+                    const rebTeam = Math.random() < 0.7 ? (event.team === 'home' ? 'away' : 'home') : event.team;
+                    const rebounder = this.getRandomPlayerOnCourt(rebTeam);
+                    this.createEvent('REBOUND', rebTeam, rebounder);
+                    }
+                });
+            }
+            
+            processTurnover(event) {
+                this.statsSemaphore.wait(() => {
+                    // SECCIÓN CRÍTICA: Actualización de pérdidas
+                    const player = this.players[event.team][event.player];
+                    player.stats.tov++;
+                    
+                    this.statsSemaphore.signal();
+                });
+                
+                this.possession = event.team === 'home' ? 'away' : 'home';
+                this.shotClock = 24;
+                this.possessionCounter++;
+            }
+            
+            processRebound(event) {
+                this.statsSemaphore.wait(() => {
+                    // SECCIÓN CRÍTICA: Actualización de rebotes
+                    const player = this.players[event.team][event.player];
+                    player.stats.reb++;
+                    // NBA: ~72% defensive rebound rate
+                    event.reb_type = Math.random() < 0.72 ? 'DEF' : 'OFF';
+                    
+                    this.statsSemaphore.signal();
+                });
+                
+                if (event.reb_type === 'DEF') {
+                    this.possession = event.team;
+                    this.shotClock = 24; // Full 24s on defensive rebound
+                } else {
+                    // Offensive rebound: shot clock resets to 14s (NBA rule since 2018)
+                    this.shotClock = 14;
+                }
+            }
+            
+            processSteal(event) {
+                this.statsSemaphore.wait(() => {
+                    // SECCIÓN CRÍTICA: Actualización de robos
+                    const player = this.players[event.team][event.player];
+                    player.stats.stl++;
+                    
+                    this.statsSemaphore.signal();
+                });
+                
+                this.possession = event.team;
+                this.shotClock = 24;
+                this.possessionCounter++;
+            }
+            
+            processFoul(event) {
+                this.statsSemaphore.wait(() => {
+                    // SECCIÓN CRÍTICA: Actualización de faltas
+                    const player = this.players[event.team][event.player];
+                    player.stats.pf++;
+                    this.teamFouls[event.team]++;
+                    
+                    this.statsSemaphore.signal();
+                });
+                
+                event.foul_type = Math.random() < 0.7 ? 'PERSONAL' : 'SHOOTING';
+                
+                if (event.foul_type === 'SHOOTING') {
+                    // Tiros libres
+                    const shooter = this.getRandomPlayerOnCourt(event.team === 'home' ? 'away' : 'home');
+                    const numFT = Math.random() < 0.7 ? 2 : 3;
+                    for (let i = 0; i < numFT; i++) {
+                    setTimeout(() => {
+                    this.createEvent('SHOT', event.team === 'home' ? 'away' : 'home', shooter);
+                    }, i * 100);
+                    }
+                }
+            }
+            
+            getRandomPlayerOnCourt(team) {
+                const players = this.onCourt[team];
+                if (players.length === 0) return 'Unknown';
+                
+                // Weighted random basado en rating
+                const totalRating = players.reduce((sum, p) => sum + p.rating, 0);
+                let rand = Math.random() * totalRating;
+                
+                for (let p of players) {
+                    rand -= p.rating;
+                    if (rand <= 0) return p.name;
+                }
+                
+                return players[0].name;
+            }
+            
+            considerSubstitutions(team) {
+                const now = (this.quarter - 1) * 12 * 60 * 1000 + (12 * 60 * 1000 - this.clockMs);
+                
+                // No sustituir en los últimos 2 minutos del 4to cuarto
+                if (this.quarter === 4 && this.clockMs < 2 * 60 * 1000) return;
+                
+                // Cooldown de 2 minutos entre sustituciones
+                if (now - this.lastSubstitutionTime[team] < 2 * 60 * 1000) return;
+                
+                // Probabilidad de sustitución
+                if (Math.random() > 0.3) return;
+                
+                const onCourt = this.onCourt[team];
+                const bench = Object.values(this.players[team]).filter(p => !p.onCourt);
+                
+                if (bench.length === 0) return;
+                
+                // Sustituir jugador con más minutos por uno de la banca
+                onCourt.sort((a, b) => this.players[team][b.name].stats.minutes - this.players[team][a.name].stats.minutes);
+                const playerOut = onCourt[0];
+                
+                // Elegir sustituto de la banca (preferir mejor rating)
+                bench.sort((a, b) => b.rating - a.rating);
+                const playerIn = bench[0];
+                
+                this.makeSubstitution(team, playerOut.name, playerIn.name);
+            }
+            
+            makeSubstitution(team, playerOutName, playerInName) {
+                const playerOut = this.players[team][playerOutName];
+                const playerIn = this.players[team][playerInName];
+                
+                playerOut.onCourt = false;
+                playerIn.onCourt = true;
+                
+                this.onCourt[team] = this.onCourt[team].filter(p => p.name !== playerOutName);
+                this.onCourt[team].push(playerIn);
+                
+                this.lastSubstitutionTime[team] = (this.quarter - 1) * 12 * 60 * 1000 + (12 * 60 * 1000 - this.clockMs);
+                
+                this.eventCounter++;
+                const event = {
+                    event_id: `SUB_${this.eventCounter}`,
+                    game_id: 'NBA_LAL_BOS_2026',
+                    quarter: this.quarter,
+                    clock_ms: this.clockMs,
+                    event_time_ms: (this.quarter - 1) * 12 * 60 * 1000 + (12 * 60 * 1000 - this.clockMs),
+                    type: 'SUBSTITUTION',
+                    team: team,
+                    player_out: playerOutName,
+                    player_in: playerInName,
+                    received_at_ms: Date.now()
+                };
+                
+                // PROTEGER ACCESO A eventQueue
+                this.queueSemaphore.wait(() => {
+                    this.eventQueue.push(event);
+                    this.queueSemaphore.signal();
+                });
+            }
+            
+            endQuarter() {
+                this.pause();
+                
+                if (this.quarter < 4) {
+                    this.quarter++;
+                    this.clockMs = 12 * 60 * 1000;
+                    this.shotClock = 24;
+                    
+                    if (this.quarter === 3) {
+                    this.gameState = 'halftime';
+                    setTimeout(() => {
+                    this.gameState = 'playing';
+                    this.setStartingLineup(); // Volver titulares después del medio tiempo
+                    this.resume();
+                    }, 2000 / this.simulationSpeed);
+                    } else {
+                    setTimeout(() => {
+                    this.gameState = 'playing';
+                    this.resume();
+                    }, 1000 / this.simulationSpeed);
+                    }
+                } else {
+                    this.gameState = 'final';
+                }
+            }
+            
+            processEvent(event) {
+                // USAR SEMÁFORO PARA PROTEGER TODO EL PROCESAMIENTO
+                this.processSemaphore.wait(() => {
+                    // SECCIÓN CRÍTICA: Procesamiento completo del evento
+                    const t0 = performance.now();
+                    
+                    // Deduplicación
+                    if (this.eventLog.find(e => e.event_id === event.event_id)) {
+                    this.metrics.duplicates++;
+                    this.processSemaphore.signal();
+                    return;
+                    }
+                    
+                    // Detección de eventos tardíos (simplificado)
+                    if (this.eventLog.length > 0) {
+                    const lastEvent = this.eventLog[0];
+                    if (event.event_time_ms < lastEvent.event_time_ms) {
+                    this.metrics.late++;
+                    this.logException('late_event', event, `Evento tardío detectado`);
+                    }
+                    }
+                    
+                    this.eventLog.unshift(event);
+                    if (this.eventLog.length > 100) this.eventLog.pop();
+                    
+                    const t1 = performance.now();
+                    const latency = t1 - t0;
+                    this.metrics.latencies.push(latency);
+                    if (this.metrics.latencies.length > 100) this.metrics.latencies.shift();
+                    
+                    if (latency > 50) {
+                    this.metrics.overruns++;
+                    this.logException('deadline_overrun', event, `Procesamiento: ${latency.toFixed(2)}ms`);
+                    }
+                    
+                    this.metrics.processed++;
+                    
+                    // Liberar semáforo de procesamiento
+                    this.processSemaphore.signal();
+                });
+            }
+            
+            logException(type, event, details) {
+                this.exceptions.push({
+                    type: type,
+                    event_id: event.event_id,
+                    details: details,
+                    timestamp: new Date().toISOString()
+                });
+                if (this.exceptions.length > 20) this.exceptions.shift();
+            }
+            
+            /**
+             * Obtiene estadísticas de todos los semáforos
+             */
+            getSemaphoreStats() {
+                return {
+                    queue: this.queueSemaphore.getStats(),
+                    process: this.processSemaphore.getStats(),
+                    stats: this.statsSemaphore.getStats(),
+                    score: this.scoreSemaphore.getStats()
+                };
+            }
+        }
+        
+        // ====
+        // INSTANCIA GLOBAL Y UI
+        // ====
+        
+        let game = new NBAGame();
+        
+        function startGame() {
+            game.start();
+            updateUI();
+        }
+        
+        function pauseGame() {
+            game.pause();
+            document.getElementById('btnPause').disabled = true;
+            document.getElementById('btnResume').disabled = false;
+        }
+        
+        function resumeGame() {
+            game.resume();
+            document.getElementById('btnPause').disabled = false;
+            document.getElementById('btnResume').disabled = true;
+        }
+        
+        function resetGame() {
+            if (confirm('¿Reiniciar el partido completo?')) {
+                game.reset();
+                updateUI();
+            }
+        }
+        
+        function callTimeout() {
+            if (game.gameState !== 'playing') {
+                alert('El juego debe estar en curso para pedir tiempo fuera');
+                return;
+            }
+            
+            const team = Math.random() > 0.5 ? 'home' : 'away';
+            if (game.timeoutsRemaining[team] > 0) {
+                game.pause();
+                game.timeoutsRemaining[team]--;
+                
+                game.eventCounter++;
+                const event = {
+                    event_id: `TO_${game.eventCounter}`,
+                    type: 'TIMEOUT',
+                    team: team,
+                    quarter: game.quarter,
+                    clock_ms: game.clockMs,
+                    event_time_ms: (game.quarter - 1) * 12 * 60 * 1000 + (12 * 60 * 1000 - game.clockMs),
+                    received_at_ms: Date.now()
+                };
+                
+                // PROTEGER ACCESO A eventQueue
+                game.queueSemaphore.wait(() => {
+                    game.eventQueue.push(event);
+                    game.queueSemaphore.signal();
+                });
+                
+                setTimeout(() => {
+                    game.resume();
+                }, 3000 / game.simulationSpeed);
+                
+                alert(`Tiempo fuera solicitado por ${team === 'home' ? 'Lakers' : 'Celtics'}. Quedan ${game.timeoutsRemaining[team]} tiempos.`);
+            } else {
+                alert(`${team === 'home' ? 'Lakers' : 'Celtics'} no tiene tiempos fuera disponibles.`);
+            }
+        }
+        
+        function changeSpeed() {
+            const speed = parseFloat(document.getElementById('speedControl').value);
+            game.simulationSpeed = speed;
+            
+            if (game.gameState === 'playing') {
+                game.pause();
+                game.resume();
+            }
+        }
+        
+        function updateUI() {
+            // Marcador
+            document.getElementById('homeScore').textContent = game.score.home;
+            document.getElementById('awayScore').textContent = game.score.away;
+            
+            // Reloj
+            const minutes = Math.floor(game.clockMs / 60000);
+            const seconds = Math.floor((game.clockMs % 60000) / 1000);
+            document.getElementById('gameClock').textContent = 
+                `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Cuarto
+            let quarterText = '';
+            if (game.quarter <= 4) {
+                quarterText = `CUARTO ${game.quarter}`;
+            } else {
+                quarterText = `TIEMPO EXTRA ${game.quarter - 4}`;
+            }
+            document.getElementById('quarterInfo').textContent = quarterText;
+            
+            // Estado del juego
+            let statusHTML = '';
+            if (game.gameState === 'playing') {
+                statusHTML = '<span class="status status-live">🔴 EN VIVO</span>';
+            } else if (game.gameState === 'halftime') {
+                statusHTML = '<span class="status status-halftime">MEDIO TIEMPO</span>';
+            } else if (game.gameState === 'final') {
+                statusHTML = '<span class="status status-final">FINAL</span>';
+            } else if (game.gameState === 'paused') {
+                statusHTML = '<span class="status status-halftime">PAUSADO</span>';
+            } else {
+                statusHTML = '<span class="status status-stopped">DETENIDO</span>';
+            }
+            document.getElementById('gameStatus').innerHTML = statusHTML;
+            
+            // Posesión
+            document.getElementById('homePossession').innerHTML = 
+                game.possession === 'home' ? '<span class="possession-indicator"></span>' : '';
+            document.getElementById('awayPossession').innerHTML = 
+                game.possession === 'away' ? '<span class="possession-indicator"></span>' : '';
+            
+            // Faltas de equipo
+            document.getElementById('homeFouls').textContent = game.teamFouls.home;
+            document.getElementById('awayFouls').textContent = game.teamFouls.away;
+            
+            // Parciales por cuarto
+            let quarterScoresHTML = '';
+            for (let i = 0; i < 4; i++) {
+                quarterScoresHTML += `
+                    <div class="quarter-score">
+                    <strong>Q${i+1}</strong><br>
+                    ${game.quarterScores[i].home} - ${game.quarterScores[i].away}
+                    </div>
+                `;
+            }
+            document.getElementById('quarterScores').innerHTML = quarterScoresHTML;
+            
+            // Estadísticas de jugadores
+            updatePlayerStats();
+            
+            // Métricas
+            document.getElementById('metricProcessed').textContent = game.metrics.processed;
+            document.getElementById('metricDuplicates').textContent = game.metrics.duplicates;
+            document.getElementById('metricLate').textContent = game.metrics.late;
+            document.getElementById('metricOverruns').textContent = game.metrics.overruns;
+            document.getElementById('metricQueue').textContent = game.metrics.queue_depth;
+            document.getElementById('metricPossessions').textContent = game.possessionCounter;
+            
+            const avgLatency = game.metrics.latencies.length > 0 
+                ? game.metrics.latencies.reduce((a,b) => a+b, 0) / game.metrics.latencies.length 
+                : 0;
+            document.getElementById('metricLatency').textContent = avgLatency.toFixed(2) + 'ms';
+            
+            // Métricas de semáforos
+            const semStats = game.getSemaphoreStats();
+            const totalWaits = semStats.queue.totalWaits + semStats.process.totalWaits + 
+                    semStats.stats.totalWaits + semStats.score.totalWaits;
+            const totalSignals = semStats.queue.totalSignals + semStats.process.totalSignals + 
+                    semStats.stats.totalSignals + semStats.score.totalSignals;
+            
+            document.getElementById('metricSemWait').textContent = totalWaits;
+            document.getElementById('metricSemSignal').textContent = totalSignals;
+            
+            // Play-by-play
+            updatePlayByPlay();
+            
+            // Excepciones
+            updateExceptions();
+            
+            // Botones
+            const isPlaying = game.gameState === 'playing';
+            const isPaused = game.gameState === 'paused';
+            document.getElementById('btnStart').disabled = isPlaying || isPaused || game.gameState === 'final';
+            document.getElementById('btnPause').disabled = !isPlaying;
+            document.getElementById('btnResume').disabled = !isPaused;
+        }
+        
+        function updatePlayerStats() {
+            const renderTeamStats = (team) => {
+                const players = Object.values(game.players[team]);
+                players.sort((a, b) => {
+                    if (a.onCourt !== b.onCourt) return b.onCourt - a.onCourt;
+                    return b.stats.minutes - a.stats.minutes;
+                });
+                
+                return players.map(p => {
+                    const s = p.stats;
+                    const fgPct = s.fga > 0 ? ((s.fgm / s.fga) * 100).toFixed(1) : '0.0';
+                    const tpPct = s.tpa > 0 ? ((s.tpm / s.tpa) * 100).toFixed(1) : '0.0';
+                    const ftPct = s.fta > 0 ? ((s.ftm / s.fta) * 100).toFixed(1) : '0.0';
+                    
+                    const rowClass = p.onCourt ? 'player-on-court' : 'player-on-bench';
+                    const statusClass = p.onCourt ? 'status-playing' : 'status-bench';
+                    
+                    return `
+                    <tr class="${rowClass}">
+                    <td><span class="status-indicator ${statusClass}"></span></td>
+                    <td class="player-name">${p.name}</td>
+                    <td>${s.minutes.toFixed(1)}</td>
+                    <td><strong>${s.pts}</strong></td>
+                    <td>${s.reb}</td>
+                    <td>${s.ast}</td>
+                    <td>${s.fgm}-${s.fga} (${fgPct}%)</td>
+                    <td>${s.tpm}-${s.tpa} (${tpPct}%)</td>
+                    <td>${s.ftm}-${s.fta} (${ftPct}%)</td>
+                    <td>${s.stl}</td>
+                    <td>${s.blk}</td>
+                    <td>${s.tov}</td>
+                    <td>${s.pf}</td>
+                    </tr>
+                    `;
+                }).join('');
+            };
+            
+            document.getElementById('homeStats').innerHTML = renderTeamStats('home');
+            document.getElementById('awayStats').innerHTML = renderTeamStats('away');
+        }
+        
+        function updatePlayByPlay() {
+            const log = document.getElementById('eventLog');
+            
+            if (game.eventLog.length === 0) {
+                log.innerHTML = '<div style="text-align:center;color:#999;padding:20px;">Esperando inicio del partido...</div>';
+                return;
+            }
+            
+            log.innerHTML = game.eventLog.slice(0, 30).map(e => {
+                const minutes = Math.floor(e.clock_ms / 60000);
+                const seconds = Math.floor((e.clock_ms % 60000) / 1000);
+                const clock = `Q${e.quarter} ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                let description = '';
+                let eventClass = 'event-item';
+                
+                switch(e.type) {
+                    case 'SHOT':
+                    if (e.made) {
+                    description = `${e.player} anota ${e.shot_type} (${e.points} pts)`;
+                    eventClass += ' event-shot-made';
+                    } else {
+                    description = `${e.player} falla ${e.shot_type}`;
+                    eventClass += ' event-shot-missed';
+                    }
+                    break;
+                    case 'REBOUND':
+                    description = `${e.player} rebote ${e.reb_type}`;
+                    break;
+                    case 'ASSIST':
+                    description = `${e.player} asistencia`;
+                    break;
+                    case 'TURNOVER':
+                    description = `${e.player} pérdida de balón`;
+                    break;
+                    case 'STEAL':
+                    description = `${e.player} robo a ${e.stolen_from}`;
+                    break;
+                    case 'BLOCK':
+                    description = `${e.player} tapón a ${e.blocked_player}`;
+                    break;
+                    case 'FOUL':
+                    description = `${e.player} falta ${e.foul_type}`;
+                    break;
+                    case 'SUBSTITUTION':
+                    description = `Sustitución: Sale ${e.player_out}, Entra ${e.player_in}`;
+                    eventClass += ' event-substitution';
+                    break;
+                    case 'TIMEOUT':
+                    description = `Tiempo fuera - ${e.team === 'home' ? 'Lakers' : 'Celtics'}`;
+                    eventClass += ' event-timeout';
+                    break;
+                    default:
+                    description = e.type;
+                }
+                
+                const teamName = e.team === 'home' ? 'LAL' : 'BOS';
+                
+                return `
+                    <div class="${eventClass}">
+                    <div>
+                    <strong>${teamName}</strong> - ${description}
+                    </div>
+                    <div class="event-time">${clock}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function updateExceptions() {
+            const card = document.getElementById('exceptionsCard');
+            const list = document.getElementById('exceptionsList');
+            
+            if (game.exceptions.length === 0) {
+                card.style.display = 'none';
+                return;
+            }
+            
+            card.style.display = 'block';
+            list.innerHTML = game.exceptions.slice(-10).reverse().map(ex => `
+                <div class="alert ${ex.type === 'deadline_overrun' ? 'alert-danger' : 'alert-warning'}">
+                    <strong>${ex.type.toUpperCase()}</strong> - ${ex.details}
+                    <br><small>Evento: ${ex.event_id} | ${new Date(ex.timestamp).toLocaleTimeString()}</small>
+                </div>
+            `).join('');
+        }
+        
+        // Auto-update UI
+        setInterval(() => {
+            updateUI();
+        }, 100);
+        
+        // Log inicial para confirmar que el semáforo está activo
+        console.log('✅ Sistema NBA inicializado con Semáforos de Dijkstra');
+        console.log('🔒 Secciones críticas protegidas:');
+        console.log('   - Cola de eventos (eventQueue)');
+        console.log('   - Procesamiento de eventos (processEvent)');
+        console.log('   - Estadísticas de jugadores');
+        console.log('   - Marcador y métricas');
+    </script>
+</body>
+</html>
