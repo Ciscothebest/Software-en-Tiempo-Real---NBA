@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logs del Sistema — NBA RT Statistics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        /* ── HEADER ─────────────────────────────────────────── */
+        .page-header {
+            background: linear-gradient(135deg, #c9082a 0%, #17408b 100%);
+            padding: 20px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .back-btn {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: #fff;
+            padding: 9px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all .25s;
+            text-decoration: none;
+        }
+        .back-btn:hover {
+            background: rgba(255,255,255,0.25);
+            transform: translateX(-2px);
+        }
+
+        .header-title h1 {
+            font-size: 22px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+        }
+        .header-title p {
+            font-size: 12px;
+            color: rgba(255,255,255,0.85);
+            margin-top: 3px;
+        }
+
+        /* ── CONNECTION BADGE ───────────────────────────────── */
+        .connection-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all .4s;
+        }
+        .badge-live         { background: rgba(76,175,80,.25);  border: 1px solid #4caf50; color: #fff; }
+        .badge-waiting      { background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.4); color: #fff; }
+        .badge-disconnected { background: rgba(201,8,42,.3);    border: 1px solid #c9082a; color: #fff; }
+        .badge-dot {
+            width: 9px; height: 9px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        .badge-live .badge-dot { animation: blink 1.2s infinite; }
+        @keyframes blink { 0%,100%{ opacity:1; } 50%{ opacity:.3; } }
+
+        /* ── CONTAINER ──────────────────────────────────────── */
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 24px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* ── CARD ───────────────────────────────────────────── */
+        .card {
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            color: #333;
+        }
+        .card h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            border-bottom: 3px solid #c9082a;
+            padding-bottom: 10px;
+            color: #17408b;
+        }
+
+        /* ── GAME STATUS BAR ─────────────────────────────────── */
+        .game-status-bar {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            padding: 14px 20px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            font-size: 13px;
+            color: #333;
+        }
+        .game-status-bar .gk {
+            font-family: 'Courier New', monospace;
+            font-size: 20px;
+            font-weight: bold;
+            color: #17408b;
+        }
+        .gs { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; }
+        .gs-live    { background: #c9082a; color: #fff; animation: blink 1.5s infinite; }
+        .gs-paused  { background: #f39c12; color: #fff; }
+        .gs-final   { background: #2c3e50; color: #fff; }
+        .gs-stopped { background: #95a5a6; color: #fff; }
+        .score-display { font-weight: bold; font-size: 18px; color: #17408b; letter-spacing: 1px; }
+
+        /* ── STATS TABLE ─────────────────────────────────────── */
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .stats-table th {
+            background: #f5f5f5;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #ddd;
+            position: sticky;
+            top: 0;
+        }
+        .stats-table td {
+            padding: 9px 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .stats-table tr:last-child td { border-bottom: none; }
+        .stats-table tr:hover td { background: #f9f9f9; }
+
+        /* ── SHARDS GRID ─────────────────────────────────────── */
+        .shards-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .db-shard {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 12px 10px;
+            text-align: center;
+            transition: box-shadow .3s;
+        }
+        .db-shard:hover { box-shadow: 0 4px 12px rgba(156,39,176,0.18); }
+        .shard-label  { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: #9c27b0; margin-bottom: 4px; }
+        .shard-name   { font-size: 13px; font-weight: 600; color: #333; }
+        .shard-tables { font-size: 10px; color: #888; margin: 4px 0; }
+        .shard-rows   { font-size: 18px; font-weight: 700; color: #17408b; margin: 4px 0; }
+        .shard-badge  { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-top: 4px; }
+        .shard-ok   { background: #e8f5e9; color: #2e7d32; }
+        .shard-hot  { background: #ffebee; color: #c62828; animation: blink 1s infinite; }
+        .shard-sync { background: #e3f2fd; color: #1565c0; }
+
+        /* ── NODES GRID ──────────────────────────────────────── */
+        .nodes-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .node-card {
+            border-radius: 10px;
+            padding: 14px;
+            border: 1px solid #ddd;
+        }
+        .node-card.primary   { background: linear-gradient(135deg,#fff8e1,#fff3cd); border-color: #f9a825; }
+        .node-card.sync-node { background: linear-gradient(135deg,#e8f5e9,#c8e6c9); border-color: #43a047; }
+        .node-card.async-node{ background: linear-gradient(135deg,#e3f2fd,#bbdefb); border-color: #1e88e5; }
+        .node-card.analytics { background: linear-gradient(135deg,#f3e5f5,#e1bee7); border-color: #8e24aa; }
+        .node-card h4    { font-size: 11px; font-weight: 700; margin-bottom: 6px; color: #333; text-transform: uppercase; letter-spacing: .4px; }
+        .node-role       { font-size: 13px; font-weight: 700; color: #17408b; }
+        .node-stat       { font-size: 12px; color: #555; margin-top: 4px; }
+        .node-stat span  { color: #333; font-weight: 600; }
+
+        /* ── METRICS GRID ────────────────────────────────────── */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .metric-box {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 10px 14px;
+        }
+        .metric-box .label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: .4px; }
+        .metric-box .value { font-size: 20px; font-weight: 700; color: #17408b; margin-top: 2px; }
+        .metric-box .value.danger { color: #c9082a; }
+
+        /* ── OP LOG / SYNC LOG ───────────────────────────────── */
+        .op-log, .sync-log-box {
+            background: #f4f6f8;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 12px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 11.5px;
+            line-height: 1.65;
+            color: #333;
+        }
+        .sync-log-box { height: 220px; }
+        .op-log div, .sync-log-box div { border-bottom: 1px solid #eee; padding: 2px 0; }
+
+        /* ── SYNC GRID ───────────────────────────────────────── */
+        .sync-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .sync-section {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 16px;
+        }
+        .sync-section h3 {
+            font-size: 12px;
+            color: #17408b;
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 6px;
+            font-weight: 700;
+        }
+
+        /* 2PC chips */
+        .tx-states { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+        .tx-state {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 700;
+            background: #eee;
+            color: #888;
+            border: 1px solid #ddd;
+            transition: all .3s;
+        }
+        .tx-active {
+            background: #fff3e0;
+            color: #e65100;
+            border-color: #ffcc80;
+            box-shadow: 0 0 6px rgba(255,152,0,.35);
+            animation: blink 1s infinite;
+        }
+        .tx-abort { background: #ffebee; color: #b71c1c; border-color: #ef9a9a; }
+
+        /* Locks */
+        .lock-row  { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #eee; font-size: 12px; }
+        .lock-name { flex: 1; color: #3949ab; font-weight: 600; }
+        .lock-badge{ font-size: 14px; }
+        .lock-held { color: #f44336; }
+        .lock-free { color: #4caf50; }
+        .lock-acq  { font-size: 10px; color: #999; }
+
+        /* CB badges */
+        .cb-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+        .cb-badge      { padding: 3px 9px; border-radius: 8px; font-size: 11px; font-weight: 700; }
+        .cb-closed     { background: #e8f5e9; color: #2e7d32; }
+        .cb-open       { background: #ffebee; color: #b71c1c; animation: blink 1s infinite; }
+        .cb-half-open  { background: #fff8e1; color: #f57f17; }
+
+        /* Vector clocks */
+        .vc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+        .vc-cell {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 6px 8px;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: #6a1b9a;
+        }
+        .vc-cell .vc-label { font-size: 10px; color: #999; margin-bottom: 2px; }
+
+        /* Quorum */
+        .qrm-nodes { display: flex; gap: 6px; }
+        .qrm-node {
+            width: 28px; height: 28px;
+            border-radius: 6px;
+            border: 2px solid #ccc;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; font-weight: 700;
+            color: #ccc;
+            background: #fff;
+            transition: all .3s;
+        }
+
+        /* ── WAITING OVERLAY ─────────────────────────────────── */
+        .waiting-overlay {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            text-align: center;
+            gap: 16px;
+        }
+        .waiting-overlay .spinner {
+            width: 48px; height: 48px;
+            border: 4px solid #e0e0e0;
+            border-top-color: #17408b;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .waiting-overlay h3 { font-size: 20px; color: #17408b; }
+        .waiting-overlay p  { font-size: 14px; color: #666; max-width: 400px; line-height: 1.65; }
+
+        /* ── DIVIDER LINE ────────────────────────────────────── */
+        .stat-divider { width: 1px; height: 36px; background: #ddd; }
+
+        /* ── SCROLLBAR ───────────────────────────────────────── */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f0f0f0; }
+        ::-webkit-scrollbar-thumb { background: #17408b; border-radius: 3px; }
+
+        /* ── RESPONSIVE ──────────────────────────────────────── */
+        @media(max-width:900px) {
+            .shards-grid  { grid-template-columns: repeat(3, 1fr); }
+            .nodes-grid   { grid-template-columns: repeat(2, 1fr); }
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+            .sync-grid    { grid-template-columns: 1fr; }
+        }
+    </style>
+
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────────────── -->
+<header class="page-header">
+    <div class="header-left">
+        <a href="index.html" class="back-btn">← Volver al Simulador</a>
+        <div class="header-title">
+            <h1>📊 Logs del Sistema en Tiempo Real</h1>
+            <p>Semáforos de Dijkstra · Base de Datos Distribuida · Mecanismos de Sincronización</p>
+        </div>
+    </div>
+    <div id="connectionBadge" class="connection-badge badge-waiting">
+        <div class="badge-dot"></div>
+        <span id="connectionText">Esperando simulador...</span>
+    </div>
+</header>
+
+<!-- ── MAIN CONTAINER ────────────────────────────────────── -->
+<div class="container" id="mainContent">
+
+    <!-- GAME STATUS BAR -->
+    <div class="game-status-bar">
+        <div>
+            <div style="font-size:10px;color:#666;letter-spacing:.5px;margin-bottom:2px;">PARTIDO</div>
+            <div style="font-size:12px;font-weight:600;">LAL vs BOS</div>
+        </div>
+        <div style="width:1px;height:36px;background:#ddd;"></div>
+        <div>
+            <div style="font-size:10px;color:#666;letter-spacing:.5px;margin-bottom:2px;">CUARTO</div>
+            <div id="lk-quarter" class="gk" style="font-size:16px;">Q1</div>
+        </div>
+        <div>
+            <div style="font-size:10px;color:#666;letter-spacing:.5px;margin-bottom:2px;">RELOJ</div>
+            <div id="lk-clock" class="gk">12:00</div>
+        </div>
+        <div>
+            <div style="font-size:10px;color:#666;letter-spacing:.5px;margin-bottom:2px;">MARCADOR</div>
+            <div id="lk-score" class="score-display" style="font-size:16px;">0 — 0</div>
+        </div>
+        <div id="lk-status" style="margin-left:auto;">
+            <span class="gs gs-stopped">DETENIDO</span>
+        </div>
+        <div style="font-size:11px;color:#666;">
+            Último update: <span id="lk-lastupdate" style="color:#333;">—</span>
+        </div>
+    </div>
+
+    <!-- WAITING OVERLAY (visible cuando no hay datos) -->
+    <div id="waitingOverlay" class="card">
+        <div class="waiting-overlay">
+            <div class="spinner"></div>
+            <h3>Conectando con el simulador…</h3>
+            <p>Esta página recibe los datos en tiempo real desde el simulador NBA mediante BroadcastChannel API.<br>
+               Asegúrate de tener el simulador abierto e iniciado en otra pestaña del mismo navegador.</p>
+        </div>
+    </div>
+
+    <!-- ── SEMAPHORE LOGS ──────────────────────────────────── -->
+    <div class="card" id="semCard" style="display:none; border-top:3px solid #17408b;">
+        <h2>🚥 Registro de Actividad de Semáforos (Logs)</h2>
+        <div style="max-height:300px; overflow-y:auto;">
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Semáforo</th>
+                        <th>Acción / Operación</th>
+                        <th>Valor Actual</th>
+                        <th>Procesos en Cola</th>
+                        <th>Tiempo Reloj</th>
+                    </tr>
+                </thead>
+                <tbody id="semLogsBody">
+                    <tr><td colspan="5" style="text-align:center;color:#666;padding:20px;">Sin datos aún...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── DB MONITOR ─────────────────────────────────────── -->
+    <div class="card" id="dbCard" style="display:none; border-top:3px solid #9c27b0;">
+        <h2 style="color:#9c27b0;">🗄️ Monitor de Base de Datos Distribuida</h2>
+
+        <!-- Shards -->
+        <div class="shards-grid">
+            <div class="db-shard">
+                <div class="shard-label">SHARD 0</div>
+                <div class="shard-name">Catálogo</div>
+                <div class="shard-tables">teams · players</div>
+                <div class="shard-rows"><span id="lk-s0">0</span> filas</div>
+                <div class="shard-badge shard-ok">ESTÁTICO</div>
+            </div>
+            <div class="db-shard">
+                <div class="shard-label">SHARD 1</div>
+                <div class="shard-name">Partido</div>
+                <div class="shard-tables">games · quarters</div>
+                <div class="shard-rows"><span id="lk-s1">0</span> filas</div>
+                <div class="shard-badge shard-ok" id="lk-s1-badge">IDLE</div>
+            </div>
+            <div class="db-shard">
+                <div class="shard-label">SHARD 2</div>
+                <div class="shard-name">Eventos RT</div>
+                <div class="shard-tables">game_events</div>
+                <div class="shard-rows"><span id="lk-s2">0</span> filas</div>
+                <div class="shard-badge shard-hot" id="lk-s2-badge">IDLE</div>
+            </div>
+            <div class="db-shard">
+                <div class="shard-label">SHARD 3</div>
+                <div class="shard-name">Estadísticas</div>
+                <div class="shard-tables">player_game_stats</div>
+                <div class="shard-rows"><span id="lk-s3">0</span> filas</div>
+                <div class="shard-badge shard-sync" id="lk-s3-badge">IDLE</div>
+            </div>
+            <div class="db-shard">
+                <div class="shard-label">SHARD 4</div>
+                <div class="shard-name">Analítica IA</div>
+                <div class="shard-tables">ai_projections</div>
+                <div class="shard-rows"><span id="lk-s4">0</span> filas</div>
+                <div class="shard-badge shard-sync" id="lk-s4-badge">IDLE</div>
+            </div>
+        </div>
+
+        <!-- Nodos -->
+        <div class="nodes-grid">
+            <div class="node-card primary">
+                <h4>⭐ NODO 0 — PRIMARY</h4>
+                <div class="node-role" id="lk-n0-status">UP</div>
+                <div class="node-stat">Ins/s: <span id="lk-n0-ins">0</span></div>
+                <div class="node-stat">WAL: <span id="lk-n0-wal">0</span> páginas</div>
+            </div>
+            <div class="node-card sync-node">
+                <h4>🔄 NODO 1 — SYNC</h4>
+                <div class="node-role" id="lk-n1-status">UP</div>
+                <div class="node-stat">Lag: <span id="lk-n1-lag">—</span></div>
+                <div class="node-stat">Pendientes: <span id="lk-n1-pend">0</span></div>
+            </div>
+            <div class="node-card async-node">
+                <h4>📡 NODO 2 — ASYNC</h4>
+                <div class="node-role" id="lk-n2-status">UP</div>
+                <div class="node-stat">Lag: <span id="lk-n2-lag">—</span></div>
+                <div class="node-stat">Pendientes: <span id="lk-n2-pend">0</span></div>
+            </div>
+            <div class="node-card analytics">
+                <h4>📊 NODO 3 — ANALYTICS</h4>
+                <div class="node-role" id="lk-n3-status">UP</div>
+                <div class="node-stat">Lag: <span id="lk-n3-lag">—</span></div>
+                <div class="node-stat">Batch: <span id="lk-n3-batch">0</span></div>
+            </div>
+        </div>
+
+        <!-- Métricas globales -->
+        <div class="metrics-grid">
+            <div class="metric-box"><div class="label">Total INSERTs</div><div class="value" id="lk-tot-ins">0</div></div>
+            <div class="metric-box"><div class="label">Total UPDATEs</div><div class="value" id="lk-tot-upd">0</div></div>
+            <div class="metric-box"><div class="label">Transacciones Sem.</div><div class="value" id="lk-sem-tx">0</div></div>
+            <div class="metric-box"><div class="label">Rows IA</div><div class="value" id="lk-ai-rows">0</div></div>
+            <div class="metric-box"><div class="label">Excepciones</div><div class="value" id="lk-exceptions" style="color:#c9082a;">0</div></div>
+            <div class="metric-box"><div class="label">Repl. ACKs</div><div class="value" id="lk-repl-ack">0</div></div>
+            <div class="metric-box"><div class="label">Repl. Pendientes</div><div class="value" id="lk-repl-pend">0</div></div>
+            <div class="metric-box"><div class="label">CRDT Merges</div><div class="value" id="lk-crdt">0</div></div>
+        </div>
+
+        <!-- Op Log -->
+        <h3 style="font-size:12px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Log de Operaciones RT</h3>
+        <div id="lk-oplog" class="op-log">
+            <div style="color:#666;text-align:center;padding:20px;">Sin operaciones registradas aún…</div>
+        </div>
+    </div>
+
+    <!-- ── SYNC MECHANISMS ────────────────────────────────── -->
+    <div class="card" id="syncCard" style="display:none; border-top:3px solid #e91e63;">
+        <h2 style="color:#e91e63;">🔐 Mecanismos de Sincronización y Transacciones</h2>
+
+        <div class="sync-grid">
+
+            <!-- 2PC -->
+            <div class="sync-section">
+                <h3>🔄 2-Phase Commit (2PC)</h3>
+                <div class="tx-states">
+                    <div id="txs-init"    class="tx-state">IDLE</div>
+                    <div id="txs-prepare" class="tx-state">PREPARE</div>
+                    <div id="txs-commit"  class="tx-state">COMMIT</div>
+                    <div id="txs-abort"   class="tx-state tx-abort">ABORT</div>
+                </div>
+                <div class="node-stat" style="margin-bottom:4px;">Total TX: <span id="lk-tx-total" style="color:#333;font-weight:600;">0</span></div>
+                <div class="node-stat" style="margin-bottom:4px;">En Prepare: <span id="lk-tx-prep" style="color:#e65100;font-weight:600;">0</span></div>
+                <div class="node-stat" style="margin-bottom:4px;">Committed: <span id="lk-tx-commit" style="color:#2e7d32;font-weight:600;">0</span></div>
+                <div class="node-stat">Aborted: <span id="lk-tx-abort" style="color:#c9082a;font-weight:600;">0</span></div>
+            </div>
+
+            <!-- Distributed Locks -->
+            <div class="sync-section">
+                <h3>🔒 Distributed Locks</h3>
+                <div id="lk-locks-panel"></div>
+                <div style="display:flex;gap:16px;margin-top:10px;font-size:11px;">
+                    <span style="color:#666;">Acq: <strong id="lk-lock-acq" style="color:#2e7d32;">0</strong></span>
+                    <span style="color:#666;">Waits: <strong id="lk-lock-wait" style="color:#e65100;">0</strong></span>
+                    <span style="color:#666;">Deadlocks: <strong id="lk-deadlocks" style="color:#c9082a;">0</strong></span>
+                </div>
+            </div>
+
+            <!-- Sagas -->
+            <div class="sync-section">
+                <h3>⚡ Patrón SAGA</h3>
+                <div class="node-stat" style="margin-bottom:5px;">Activas: <span id="lk-sagas-active" style="color:#e65100;font-weight:700;">0</span></div>
+                <div class="node-stat" style="margin-bottom:5px;">Completadas: <span id="lk-sagas-done" style="color:#2e7d32;font-weight:700;">0</span></div>
+                <div class="node-stat" style="margin-bottom:12px;">Compensaciones: <span id="lk-sagas-comp" style="color:#c9082a;font-weight:700;">0</span></div>
+                <h3 style="margin-top:10px;">📬 Transactional Outbox</h3>
+                <div class="node-stat" style="margin-bottom:4px;">Pendientes: <span id="lk-ob-pend" style="color:#e65100;font-weight:700;">0</span></div>
+                <div class="node-stat" style="margin-bottom:4px;">Entregados: <span id="lk-ob-del" style="color:#2e7d32;font-weight:700;">0</span></div>
+                <div class="node-stat">DLQ (Dead Letter): <span id="lk-dlq" style="color:#c9082a;font-weight:700;">0</span></div>
+            </div>
+
+            <!-- Circuit Breakers -->
+            <div class="sync-section">
+                <h3>🔌 Circuit Breakers</h3>
+                <div class="cb-badges" id="lk-cb-badges">
+                    <div class="cb-badge cb-closed">N0 CLOSED</div>
+                    <div class="cb-badge cb-closed">N1 CLOSED</div>
+                    <div class="cb-badge cb-closed">N2 CLOSED</div>
+                    <div class="cb-badge cb-closed">N3 CLOSED</div>
+                </div>
+                <div style="font-size:11px;color:#666;margin-top:10px;">
+                    Total aperturas: <strong id="lk-cb-opens" style="color:#c9082a;">0</strong>
+                </div>
+            </div>
+
+            <!-- Vector Clocks -->
+            <div class="sync-section">
+                <h3>🕐 Vector Clocks</h3>
+                <div class="vc-grid" id="lk-vc-grid">
+                    <div class="vc-cell"><div class="vc-label">N0</div><span id="lk-vc0">0,0,0,0</span></div>
+                    <div class="vc-cell"><div class="vc-label">N1</div><span id="lk-vc1">0,0,0,0</span></div>
+                    <div class="vc-cell"><div class="vc-label">N2</div><span id="lk-vc2">0,0,0,0</span></div>
+                    <div class="vc-cell"><div class="vc-label">N3</div><span id="lk-vc3">0,0,0,0</span></div>
+                </div>
+                <div style="font-size:11px;color:#666;margin-top:10px;display:flex;gap:16px;">
+                    <span>Eventos: <strong id="lk-vc-ev" style="color:#1565c0;">0</strong></span>
+                    <span>Conflictos: <strong id="lk-vc-conf" style="color:#c9082a;">0</strong></span>
+                </div>
+            </div>
+
+            <!-- Quorum -->
+            <div class="sync-section">
+                <h3>🗳️ Quórum (N=4, W=3)</h3>
+                <div class="node-stat" style="margin-bottom:6px;">Escrituras: <span id="lk-qrm-w" style="color:#333;font-weight:700;">0</span></div>
+                <div class="node-stat" style="margin-bottom:6px;">OK: <span id="lk-qrm-ok" style="color:#2e7d32;font-weight:700;">0</span></div>
+                <div class="node-stat" style="margin-bottom:10px;">Fallidas: <span id="lk-qrm-fail" style="color:#c9082a;font-weight:700;">0</span></div>
+                <div style="font-size:10px;color:#666;margin-bottom:5px;">ACKs última escritura:</div>
+                <div class="qrm-nodes" id="lk-qrm-nodes">
+                    <div class="qrm-node" id="lk-qrm0">□</div>
+                    <div class="qrm-node" id="lk-qrm1">□</div>
+                    <div class="qrm-node" id="lk-qrm2">□</div>
+                    <div class="qrm-node" id="lk-qrm3">□</div>
+                </div>
+                <div style="font-size:11px;color:#666;margin-top:8px;">Total ACKs: <strong id="lk-qrm-acks" style="color:#1565c0;">0</strong></div>
+            </div>
+
+        </div><!-- /sync-grid -->
+
+        <!-- Sync Log -->
+        <h3 style="font-size:12px;color:#666;text-transform:uppercase;letter-spacing:.5px;margin-top:20px;margin-bottom:8px;">Log de Sincronización / Transacciones</h3>
+        <div id="lk-synclog" class="sync-log-box">
+            <div style="color:#666;text-align:center;padding:20px;">Sin logs de sincronización aún…</div>
+        </div>
+    </div>
+
+</div><!-- /container -->
+
+<script>
+    // ── BROADCAST CHANNEL RECEIVER ───────────────────────────────────────────
+    const channel = new BroadcastChannel('nba_logs_channel');
+    let lastMsgTs = 0;
+    let connected = false;
+
+    // Watchdog: si no llegó ningún mensaje en 3 segundos → desconectado
+    const watchdog = setInterval(() => {
+        if (Date.now() - lastMsgTs > 3000 && connected) {
+            setBadge('disconnected', 'Sin señal del simulador');
+        }
+    }, 1000);
+
+    function setBadge(state, text) {
+        const badge = document.getElementById('connectionBadge');
+        const label = document.getElementById('connectionText');
+        badge.className = 'connection-badge badge-' + state;
+        label.textContent = text;
+        connected = (state === 'live');
+    }
+
+    channel.onmessage = function(ev) {
+        if (ev.data.type !== 'STATE_UPDATE') return;
+
+        lastMsgTs = Date.now();
+        setBadge('live', '🔴 En vivo');
+
+        // Show panels, hide overlay
+        document.getElementById('waitingOverlay').style.display = 'none';
+        document.getElementById('semCard').style.display  = '';
+        document.getElementById('dbCard').style.display   = '';
+        document.getElementById('syncCard').style.display = '';
+
+        const { semLogs, db, sync, game } = ev.data;
+
+        renderGameBar(game);
+        renderSemLogs(semLogs);
+        renderDB(db, game);
+        renderSync(sync);
+    };
+
+    // ── GAME STATUS BAR ──────────────────────────────────────────────────────
+    function renderGameBar(game) {
+        const min = Math.floor((game.clockMs || 0) / 60000);
+        const sec = Math.floor(((game.clockMs || 0) % 60000) / 1000);
+        setText('lk-quarter', 'Q' + (game.quarter || 1));
+        setText('lk-clock', min + ':' + String(sec).padStart(2, '0'));
+        setText('lk-score', (game.score?.home || 0) + ' — ' + (game.score?.away || 0));
+        setText('lk-lastupdate', new Date().toLocaleTimeString());
+
+        const statusEl = document.getElementById('lk-status');
+        const s = game.gameState;
+        const map = { playing:'gs-live', paused:'gs-paused', final:'gs-final' };
+        const labels = { playing:'🔴 EN VIVO', paused:'⏸ PAUSADO', final:'✅ FINAL' };
+        statusEl.innerHTML = `<span class="gs ${map[s] || 'gs-stopped'}">${labels[s] || 'DETENIDO'}</span>`;
+    }
+
+    // ── SEMAPHORE LOGS ───────────────────────────────────────────────────────
+    function renderSemLogs(logs) {
+        const tbody = document.getElementById('semLogsBody');
+        if (!logs || logs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#666;padding:20px;">Sin operaciones registradas…</td></tr>';
+            return;
+        }
+        tbody.innerHTML = logs.map(log => {
+            const min = Math.floor((log.time || 0) / 60000);
+            const sec = Math.floor(((log.time || 0) % 60000) / 1000);
+            const clock = log.time > 0 ? `Q${log.quarter || 1} ${min}:${String(sec).padStart(2,'0')}` : '0:00';
+            let opStyle = 'color:#666;';
+            if (log.op && log.op.includes('Wait'))   opStyle = 'color:#c9082a;font-weight:700;';
+            if (log.op && log.op.includes('Signal')) opStyle = 'color:#2e7d32;font-weight:700;';
+            return `<tr>
+                <td><strong>${log.id || ''}</strong></td>
+                <td style="${opStyle}">${log.op || ''}</td>
+                <td>${log.val ?? ''}</td>
+                <td>${log.qLen > 0 ? `<span style="color:#c9082a;font-weight:700;">${log.qLen}</span>` : '0'}</td>
+                <td style="color:#666;font-size:11px;">${clock}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    // ── DB MONITOR ───────────────────────────────────────────────────────────
+    function renderDB(db, game) {
+        const isPlaying = game.gameState === 'playing';
+
+        // Shards
+        for (let i = 0; i <= 4; i++) {
+            setText(`lk-s${i}`, (db.shards[i] || 0).toLocaleString());
+        }
+        const s2badge = document.getElementById('lk-s2-badge');
+        if (s2badge) { s2badge.textContent = isPlaying ? 'ACTIVO ●' : 'IDLE'; s2badge.className = 'shard-badge ' + (isPlaying ? 'shard-hot' : 'shard-ok'); }
+        ['lk-s1-badge','lk-s3-badge','lk-s4-badge'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = isPlaying ? 'SYNC ●' : 'IDLE';
+            el.className = 'shard-badge ' + (isPlaying ? 'shard-sync' : 'shard-ok');
+        });
+
+        // Nodes
+        const n = db.nodes || [];
+        if (n[0]) { setText('lk-n0-ins', n[0].insPerSec || 0); setText('lk-n0-wal', n[0].walPages || 0); setNodeStatus('lk-n0-status', n[0].status); }
+        if (n[1]) { setText('lk-n1-lag', (n[1].lag || 0) + 'ms'); setText('lk-n1-pend', n[1].pending || 0); setNodeStatus('lk-n1-status', n[1].status); }
+        if (n[2]) { setText('lk-n2-lag', (n[2].lag || 0) + 'ms'); setText('lk-n2-pend', n[2].pending || 0); setNodeStatus('lk-n2-status', n[2].status); }
+        if (n[3]) { setText('lk-n3-lag', (n[3].lag || 0) + 'ms'); setText('lk-n3-batch', n[3].batch || 0); setNodeStatus('lk-n3-status', n[3].status); }
+
+        // Metrics
+        setText('lk-tot-ins',    (db.totalInserts || 0).toLocaleString());
+        setText('lk-tot-upd',    (db.totalUpdates || 0).toLocaleString());
+        setText('lk-sem-tx',     (db.semTx || 0).toLocaleString());
+        setText('lk-ai-rows',    (db.aiRows || 0).toLocaleString());
+        setText('lk-exceptions', (db.exceptionRows || 0).toLocaleString());
+        setText('lk-repl-ack',   (db.replAck || 0).toLocaleString());
+        setText('lk-repl-pend',  (db.replPending || 0).toLocaleString());
+        setText('lk-crdt',       (db.crdtMerges || 0).toLocaleString());
+
+        // Op Log
+        const logEl = document.getElementById('lk-oplog');
+        if (logEl && db.opLog && db.opLog.length > 0) {
+            logEl.innerHTML = db.opLog.map(e =>
+                `<div><span style="color:${e.color||'#aaa'};font-weight:700;">[${e.op}]</span> ` +
+                `<span style="color:#666;">${e.node}</span> ` +
+                `<span>${e.msg}</span>` +
+                `<span style="color:#666;float:right;">${e.ts}</span></div>`
+            ).join('');
+        }
+    }
+
+    // ── SYNC MECHANISMS ──────────────────────────────────────────────────────
+    function renderSync(s) {
+        // 2PC
+        setText('lk-tx-total',  s.tx.total);
+        setText('lk-tx-prep',   s.tx.prepare);
+        setText('lk-tx-commit', s.tx.committed);
+        setText('lk-tx-abort',  s.tx.aborted);
+        ['init','prepare','commit','abort'].forEach(state => {
+            const el = document.getElementById('txs-' + state);
+            if (!el) return;
+            el.className = 'tx-state' + (state === 'abort' ? ' tx-abort' : '');
+        });
+        const phaseMap = { idle:'init', prepare:'prepare', prepared:'prepare', commit:'commit', committed:'commit', abort:'abort', aborted:'abort' };
+        const activeId = 'txs-' + (phaseMap[s.tx.currentPhase.toLowerCase()] || 'init');
+        const activeEl = document.getElementById(activeId);
+        if (activeEl) activeEl.className = 'tx-state tx-active';
+
+        // Locks
+        const lockNames = { score:'score', statsLAL:'stats:LAL', statsBOS:'stats:BOS', queue:'queue', possession:'posesión' };
+        let lockHtml = '';
+        for (const [key, lk] of Object.entries(s.locks || {})) {
+            lockHtml += `<div class="lock-row">
+                <span class="lock-name">${lockNames[key] || key}</span>
+                <span class="lock-badge ${lk.held ? 'lock-held' : 'lock-free'}">${lk.held ? '🔒' : '🔓'}</span>
+                <span class="lock-acq">${lk.acq || 0} acq</span>
+            </div>`;
+        }
+        setText2('lk-locks-panel', lockHtml);
+        setText('lk-lock-acq',  s.lockAcqTotal || 0);
+        setText('lk-lock-wait', s.lockWaitTotal || 0);
+        setText('lk-deadlocks', s.deadlocks || 0);
+
+        // Sagas & Outbox
+        setText('lk-sagas-active', s.sagas.active);
+        setText('lk-sagas-done',   s.sagas.done);
+        setText('lk-sagas-comp',   s.sagas.compensated);
+        setText('lk-ob-pend', s.outbox.pending);
+        setText('lk-ob-del',  s.outbox.delivered);
+        setText('lk-dlq',     s.outbox.dlq);
+
+        // Circuit Breakers
+        const cbContainer = document.getElementById('lk-cb-badges');
+        if (cbContainer && s.cb) {
+            cbContainer.innerHTML = s.cb.map((cb, i) => {
+                const cls = { CLOSED:'cb-closed', OPEN:'cb-open', HALF_OPEN:'cb-half-open' }[cb.state] || 'cb-closed';
+                return `<div class="cb-badge ${cls}">N${i} ${cb.state} <span style="font-size:10px;opacity:.7;">(${cb.failures}f)</span></div>`;
+            }).join('');
+        }
+        setText('lk-cb-opens', s.cbTotalOpens || 0);
+
+        // Vector Clocks
+        (s.vc || []).forEach((vc, i) => setText('lk-vc' + i, vc.join(',')));
+        setText('lk-vc-ev',   s.vcEvents || 0);
+        setText('lk-vc-conf', s.vcConflicts || 0);
+
+        // Quorum
+        setText('lk-qrm-w',    s.qrm.writes);
+        setText('lk-qrm-ok',   s.qrm.ok);
+        setText('lk-qrm-fail', s.qrm.failed);
+        setText('lk-qrm-acks', s.qrm.totalAcks);
+        (s.qrm.lastAcks || []).forEach((acked, i) => {
+            const el = document.getElementById('lk-qrm' + i);
+            if (!el) return;
+            el.textContent = acked ? '■' : '□';
+            el.style.color = acked ? 'var(--green)' : '#666';
+            el.style.borderColor = acked ? 'var(--green)' : '#ddd';
+        });
+
+        // Sync log
+        const slEl = document.getElementById('lk-synclog');
+        if (slEl && s.syncLog && s.syncLog.length > 0) {
+            slEl.innerHTML = s.syncLog.map(e =>
+                `<div><span style="color:${e.color};font-weight:700;">[${e.subsys}]</span> ` +
+                `<span style="color:#666;">${e.ts}</span> ` +
+                `<span style="color:#333;">${e.msg}</span></div>`
+            ).join('');
+        }
+    }
+
+    // ── HELPERS ──────────────────────────────────────────────────────────────
+    function setText(id, val) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+    }
+    function setText2(id, html) {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = html;
+    }
+    function setNodeStatus(id, status) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = status || 'UP';
+        el.style.color = status === 'UP' ? '#2e7d32' : status === 'DEGRADED' ? '#e65100' : '#c9082a';
+    }
+</script>
+
+</body>
+</html>

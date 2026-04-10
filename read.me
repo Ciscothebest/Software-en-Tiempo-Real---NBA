@@ -1,0 +1,123 @@
+# 🏀 NBA Real-Time Analytics Simulator
+**Simulador de Analítica Deportiva NBA en Tiempo Real**  
+Ingeniería de Software en Tiempo Real — UNIBE
+
+---
+
+## 📁 Archivos del Proyecto
+
+| Archivo | Descripción |
+|---------|-------------|
+| `index.html` | Aplicación principal — UI + motor de juego + semáforos + paneles RT |
+| `worker.js` | Web Worker — algoritmo recursivo de predicción IA (aislado del hilo principal) |
+| `main.js` | Módulo auxiliar de lógica de juego |
+| `style.css` | Hoja de estilos global |
+| `schema.sql` | Esquema de BD distribuida v3.0 (16 tablas, triggers, índices, seed) |
+| `db_documentation.md` | Documentación técnica completa: entidades, relaciones, restricciones, mecanismos de sincronización |
+| `nba_simulation.db` | Archivo SQLite local (instancia del esquema en producción local) |
+| `fuse.js` / `fuse2.js` | Bibliotecas de búsqueda difusa (referencia) |
+| `read.me` | Este archivo — descripción técnica del proyecto |
+| `backend/` | Carpeta reservada para servicios de backend futuros |
+
+---
+
+## 🎯 Objetivo del Proyecto
+
+Demostrar la resolución de problemas de **concurrencia en tiempo real** en una simulación de partido NBA, implementando:
+- Semáforos de Dijkstra (exclusión mutua)
+- Cola de eventos con prioridad (PriorityEventQueue)
+- Web Worker concurrente para predicción IA recursive
+- Base de datos distribuida con replicación y tolerancia a fallos
+
+---
+
+## 🛑 El Problema Original
+
+La simulación base sufría de:
+1. **Thread Blocking** — cálculos recursivos congelaban el DOM
+2. **Race Conditions** — eventos modificaban estado compartido sin protección
+3. **Desincronización** — timestamps de eventos fuera del reloj de juego
+4. **Memory Leaks** — intervalos no limpiados entre cuartos
+
+---
+
+## 🛠️ Solución Implementada
+
+### Eje A — Concurrencia Aislada (Web Workers)
+El algoritmo de predicción corre en un `Blob Web Worker` paralelo.  
+Envía **snapshots inmutables** del estado cada 3 segundos de juego.  
+El DOM mantiene 60 FPS sin interrupciones.
+
+### Eje B — Motor Recursivo Controlado
+Profundidad máxima `MAX_DEPTH = 16`.  
+Decisiones estocásticas con `pMake = 0.45`.  
+Maneja `aiWorker.onerror` para fallos silenciosos.
+
+### Eje C — Semáforos de Dijkstra
+```
+Semaphore(1) → wait() / signal()
+Cola FIFO + queueMicrotask (no setTimeout)
+4 semáforos: queueSemaphore, processSemaphore,
+             statsSemaphore, scoreSemaphore
+```
+
+### Eje D — Pipeline de Eventos RT
+```
+Detectar → Manejar → Resolver (3 fases)
+PriorityEventQueue: TIMEOUT(0) > SUB(1) > FOUL(2) > SHOT(3) > REBOUND(4)
+Deduplicación O(1) con Set
+requestAnimationFrame con dirty-flag (throttle 80ms)
+_eventGenLock — mutex anti re-entrada
+```
+
+### Eje E — Sincronización del Reloj (Clock Drift)
+```
+Drift = wallElapsed − (gameConsumed / simulationSpeed)
+Verde < 50ms | Amarillo < 150ms | Rojo > 150ms
+```
+
+### Eje F — Base de Datos Distribuida (schema.sql)
+
+**16 tablas** en 6 capas lógicas:
+
+| Mecanismo | Tablas clave |
+|-----------|-------------|
+| **2-Phase Commit** | `transaction_log`, `tx_participants` |
+| **Saga + Compensación** | `saga_log`, `saga_steps` |
+| **Distributed Locks** | `distributed_locks`, `lock_waiters`, `deadlock_graph` |
+| **Transactional Outbox** | `event_outbox`, `delivery_ack` |
+| **Dead Letter Queue** | `event_dead_letter` |
+| **Vector Clocks** | `vector_clocks` |
+| **Quórum (N/2+1=3)** | `quorum_state` |
+| **Circuit Breaker** | `circuit_breaker`, `node_health`, `failover_log` |
+| **CRDT G-Counter** | `player_game_stats` (trigger merge) |
+
+---
+
+## 📊 Paneles del Dashboard
+
+1. **⏱ Indicadores del Partido** — reloj, marcador, posesión
+2. **👥 Estadísticas de Jugadores** — grid LAL vs BOS
+3. **🤖 Predicción IA** — probabilidades del Web Worker
+4. **📈 Métricas del Sistema RT** — latencia, overruns, deriva de reloj, Gen-Lock
+5. **📝 Play-by-Play** — log de jugadas con timestamps
+6. **⚠️ Excepciones del Sistema** — late_event, deadlock_warning, etc.
+7. **🚥 Logs de Semáforos** — tabla Wait/Signal en tiempo real
+8. **🗄️ Monitor de BD Distribuida** — shards, nodos, WAL, ins/seg, CRDT
+9. **🔐 Mecanismos de Sincronización** — 2PC state machine, locks, sagas, outbox, circuit breakers, vector clocks, quórum
+
+---
+
+## 🚀 Cómo Ejecutar
+
+```
+1. Abrir index.html directamente en el navegador (file://)
+2. No requiere servidor — usa Blob Web Workers locales
+3. Presionar ▶ INICIAR para comenzar la simulación
+4. Ajustar la velocidad con el slider (1x – 10x)
+```
+
+---
+
+**Resultado:** Simulador escalable con IA concurrente, semáforos formales,  
+sincronización de reloj en tiempo real y arquitectura de BD distribuida completa.
